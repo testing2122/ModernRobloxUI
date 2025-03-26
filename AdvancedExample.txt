@@ -1,14 +1,38 @@
 -- Advanced Example of ModernUI library
 -- This example showcases more advanced features and components
 
+-- Create a shared environment for modules to reference each other
+if not getgenv then getgenv = function() return _G end end
+getgenv().ModernUIComponents = {}
+
 -- Load the required modules
-local ModernUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/ModernUI.txt"))()
-local Button = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Button.txt"))()
-local TextInput = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/TextInput.txt"))()
-local Toggle = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Toggle.txt"))()
-local Slider = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Slider.txt"))()
-local Dropdown = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Dropdown.txt"))()
-local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Notification.txt"))()
+local ModernUIUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/refs/heads/main/ModernUI.txt"
+local ButtonUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/refs/heads/main/Button.txt"
+local TextInputUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/refs/heads/main/TextInput.txt"
+local ToggleUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/refs/heads/main/Toggle.txt"
+local SliderUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/refs/heads/main/Slider.txt"
+local DropdownUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/refs/heads/main/Dropdown.txt"
+local NotificationUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/refs/heads/main/Notification.txt"
+
+-- Load ModernUI first
+local ModernUI = loadstring(game:HttpGet(ModernUIUrl))()
+getgenv().ModernUIComponents.ModernUI = ModernUI
+
+-- Load the other components
+local Button = loadstring(game:HttpGet(ButtonUrl))()
+local TextInput = loadstring(game:HttpGet(TextInputUrl))()
+local Toggle = loadstring(game:HttpGet(ToggleUrl))()
+local Slider = loadstring(game:HttpGet(SliderUrl))()
+local Dropdown = loadstring(game:HttpGet(DropdownUrl))()
+local Notification = loadstring(game:HttpGet(NotificationUrl))()
+
+-- Store all components in the shared environment
+getgenv().ModernUIComponents.Button = Button
+getgenv().ModernUIComponents.TextInput = TextInput
+getgenv().ModernUIComponents.Toggle = Toggle
+getgenv().ModernUIComponents.Slider = Slider
+getgenv().ModernUIComponents.Dropdown = Dropdown
+getgenv().ModernUIComponents.Notification = Notification
 
 -- Create the main UI window
 local mainUI = ModernUI:Create("Advanced Example", UDim2.new(0, 500, 0, 400))

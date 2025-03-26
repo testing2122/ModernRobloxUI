@@ -6,7 +6,8 @@ TextInput.__index = TextInput
 
 -- Create a new text input
 function TextInput.new(parent, placeholder, size, position)
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Default properties
     local inputSize = size or UDim2.new(0, 200, 0, 40)
@@ -108,7 +109,8 @@ function TextInput:OnFocused()
         return 
     end
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Focus animation
     ModernUI:Tween(self.Instance, {
@@ -131,7 +133,8 @@ end
 function TextInput:OnFocusLost(enterPressed, inputObject)
     self.Focused = false
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Reset to normal state
     ModernUI:Tween(self.Instance, {
@@ -170,7 +173,8 @@ end
 
 -- Validate the input based on validators
 function TextInput:Validate()
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     local text = self.TextBox.Text
     local isValid = true
     local validationMessage = ""
@@ -285,7 +289,8 @@ function TextInput:SetEnabled(enabled)
     self.Enabled = enabled
     self.TextBox.TextEditable = enabled
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     if enabled then
         ModernUI:Tween(self.Instance, {

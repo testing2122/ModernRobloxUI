@@ -6,7 +6,8 @@ Toggle.__index = Toggle
 
 -- Create a new toggle
 function Toggle.new(parent, text, size, position)
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Default properties
     local toggleSize = size or UDim2.new(0, 200, 0, 40)
@@ -112,7 +113,8 @@ end
 
 -- Set toggle value
 function Toggle:SetValue(value, silentMode)
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Update value
     self.Value = value
@@ -166,7 +168,8 @@ end
 function Toggle:SetEnabled(enabled)
     self.Enabled = enabled
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     if enabled then
         ModernUI:Tween(self.Text, {
@@ -206,7 +209,8 @@ function Toggle:SetColors(textColor, knobColor, activeColor, inactiveColor)
         self.Knob.BackgroundColor3 = knobColor
     end
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     if activeColor and self.Value then
         self.Background.BackgroundColor3 = activeColor

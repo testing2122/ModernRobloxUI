@@ -8,7 +8,8 @@ Button.__index = Button
 
 -- Create a new button
 function Button.new(parent, text, size, position)
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment instead of requiring it
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Default properties
     local buttonSize = size or UDim2.new(0, 200, 0, 40)
@@ -104,7 +105,8 @@ function Button:MouseEnter()
     if not self.Enabled then return end
     self.Hovering = true
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Hover animation
     ModernUI:Tween(self.Instance, {
@@ -120,7 +122,8 @@ function Button:MouseLeave()
     if not self.Enabled then return end
     self.Hovering = false
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Reset to normal state
     ModernUI:Tween(self.Instance, {
@@ -136,7 +139,8 @@ function Button:MouseDown()
     if not self.Enabled then return end
     self.Pressing = true
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Press animation
     ModernUI:Tween(self.Instance, {
@@ -151,7 +155,8 @@ function Button:MouseUp()
     if not self.Enabled then return end
     self.Pressing = false
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Reset to hover state if still hovering
     if self.Hovering then
@@ -178,7 +183,8 @@ end
 
 -- Ripple effect on click
 function Button:CreateRipple()
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     local mouse = game:GetService("Players").LocalPlayer:GetMouse()
     
     -- Get the position of the mouse relative to the button
@@ -245,7 +251,8 @@ end
 function Button:SetEnabled(enabled)
     self.Enabled = enabled
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     if enabled then
         ModernUI:Tween(self.Instance, {

@@ -1,12 +1,32 @@
 -- Simple Example of ModernUI library
 -- This is a minimal example showing basic functionalities
 
+-- Create a shared environment for modules to reference each other
+if not getgenv then getgenv = function() return _G end end
+getgenv().ModernUIComponents = {}
+
 -- Load the required modules
-local ModernUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/ModernUI.txt"))()
-local Button = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Button.txt"))()
-local TextInput = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/TextInput.txt"))()
-local Toggle = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Toggle.txt"))()
-local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Notification.txt"))()
+local ModernUIUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/main/ModernUI.txt"
+local ButtonUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/main/Button.txt"
+local TextInputUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/main/TextInput.txt"
+local ToggleUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/main/Toggle.txt"
+local NotificationUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/main/Notification.txt"
+
+-- Load ModernUI first
+local ModernUI = loadstring(game:HttpGet(ModernUIUrl))()
+getgenv().ModernUIComponents.ModernUI = ModernUI
+
+-- Load the other components
+local Button = loadstring(game:HttpGet(ButtonUrl))()
+local TextInput = loadstring(game:HttpGet(TextInputUrl))()
+local Toggle = loadstring(game:HttpGet(ToggleUrl))()
+local Notification = loadstring(game:HttpGet(NotificationUrl))()
+
+-- Store all components in the shared environment
+getgenv().ModernUIComponents.Button = Button
+getgenv().ModernUIComponents.TextInput = TextInput
+getgenv().ModernUIComponents.Toggle = Toggle
+getgenv().ModernUIComponents.Notification = Notification
 
 -- Create the main UI window
 local mainUI = ModernUI:Create("Simple Example", UDim2.new(0, 400, 0, 300))

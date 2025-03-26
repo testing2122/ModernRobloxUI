@@ -35,7 +35,8 @@ local ActiveNotifications = {}
 
 -- Create a notification
 function Notification.new(title, message, notificationType, duration, parent)
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Default properties
     notificationType = notificationType or "INFO"
@@ -227,7 +228,8 @@ end
 
 -- Show notification with animation
 function Notification:Show()
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Create a nice entry animation
     self.Instance.Size = UDim2.new(1, -20, 0, 0)
@@ -261,7 +263,8 @@ end
 
 -- Start auto-close timer
 function Notification:StartAutoClose()
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Start progress bar animation
     ModernUI:Tween(self.ProgressBar, {
@@ -276,7 +279,8 @@ end
 
 -- Close notification with animation
 function Notification:Close()
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Create a nice exit animation
     ModernUI:Tween(self.Instance, {
