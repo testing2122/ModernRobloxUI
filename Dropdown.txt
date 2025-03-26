@@ -9,7 +9,8 @@ Dropdown.__index = Dropdown
 
 -- Create a new dropdown
 function Dropdown.new(parent, placeholder, options, size, position)
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Default properties
     local dropdownSize = size or UDim2.new(0, 200, 0, 40)
@@ -191,20 +192,21 @@ end
 
 -- Add an option to the dropdown
 function Dropdown:AddOption(option)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
+    
     if type(option) ~= "table" then
         option = {Text = tostring(option), Value = option}
     end
     
     table.insert(self.Options, option)
     
-    local ModernUI = require(script.Parent.ModernUI)
-    
     -- Create option button
     local optionButton = Instance.new("TextButton")
     optionButton.Name = "Option_" .. option.Text:gsub("%s+", "_")
-    optionButton.Size = UDim2.new(0.95, 0, 0, self.OptionHeight)
-    optionButton.BackgroundColor3 = ModernUI.Config.Theme.Secondary
-    optionButton.BackgroundTransparency = 1
+    optionButton.Size = UDim2.new(1, -10, 0, self.OptionHeight)
+    optionButton.BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Primary, 0.5)
+    optionButton.BackgroundTransparency = 0
     optionButton.Text = option.Text
     optionButton.TextColor3 = ModernUI.Config.Theme.Text
     optionButton.Font = ModernUI.Config.Font
@@ -215,62 +217,32 @@ function Dropdown:AddOption(option)
     -- Add corner to option button
     local optionCorner = ModernUI:CreateCorner(optionButton, UDim.new(0, 4))
     
-    -- Set up option button events
+    -- Add option to tracking tables
+    table.insert(self.OptionButtons, optionButton)
+    
+    -- Set up option click event
     optionButton.MouseButton1Click:Connect(function()
         self:SelectOption(option)
         self:Close()
     end)
     
+    -- Set up hover effects
     optionButton.MouseEnter:Connect(function()
         ModernUI:Tween(optionButton, {
-            BackgroundTransparency = 0,
-            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.2)
+            BackgroundColor3 = ModernUI.Config.Theme.Accent
         }, ModernUI.Config.Animation.HoverTweenInfo)
     end)
     
     optionButton.MouseLeave:Connect(function()
         ModernUI:Tween(optionButton, {
-            BackgroundTransparency = 1
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Primary, 0.5)
         }, ModernUI.Config.Animation.HoverTweenInfo)
     end)
     
-    table.insert(self.OptionButtons, optionButton)
-    
-    -- Update list container height based on number of options
-    self:UpdateListHeight()
-    
     return self
 end
 
--- Update list container height
-function Dropdown:UpdateListHeight()
-    local numOptions = #self.Options
-    local maxItems = math.min(self.MaxVisibleItems, numOptions)
-    local listHeight = maxItems * (self.OptionHeight + 2) + 10 -- Adding padding
-    
-    self.ListContainer.Size = UDim2.new(1, 0, 0, listHeight)
-    self.ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, numOptions * (self.OptionHeight + 2) + 10)
-end
-
--- Select an option
-function Dropdown:SelectOption(option)
-    self.SelectedOption = option
-    
-    -- Update selected label
-    self.SelectedLabel.Text = option.Text
-    self.SelectedLabel.TextColor3 = require(script.Parent.ModernUI).Config.Theme.Text
-    
-    -- Call callbacks
-    for _, callback in ipairs(self.Callbacks) do
-        task.spawn(function()
-            callback(option.Value, option.Text)
-        end)
-    end
-    
-    return self
-end
-
--- Toggle the dropdown
+-- Toggle dropdown open/closed
 function Dropdown:Toggle()
     if self.IsOpen then
         self:Close()
@@ -283,14 +255,20 @@ end
 
 -- Open the dropdown
 function Dropdown:Open()
-    if not self.Enabled or self.IsOpen then return self end
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
-    local ModernUI = require(script.Parent.ModernUI)
+    if self.IsOpen or not self.Enabled or #self.Options == 0 then return self end
+    
     self.IsOpen = true
     
-    -- Show list container
-    self.ListContainer.Visible = true
+    -- Calculate height based on number of options (with max visible items limit)
+    local numVisibleItems = math.min(#self.Options, self.MaxVisibleItems)
+    local containerHeight = numVisibleItems * (self.OptionHeight + 2) + 10 -- +2 for padding, +10 for top/bottom padding
+    
+    -- Make list container visible before tweening
     self.ListContainer.Size = UDim2.new(1, 0, 0, 0)
+    self.ListContainer.Visible = true
     
     -- Rotate arrow icon
     ModernUI:Tween(self.ArrowIcon, {
@@ -298,18 +276,16 @@ function Dropdown:Open()
     }, ModernUI.Config.Animation.TweenInfo)
     
     -- Expand list container
-    local height = math.min(#self.Options, self.MaxVisibleItems) * (self.OptionHeight + 2) + 10
     ModernUI:Tween(self.ListContainer, {
-        Size = UDim2.new(1, 0, 0, height)
+        Size = UDim2.new(1, 0, 0, containerHeight)
     }, ModernUI.Config.Animation.TweenInfo)
     
     -- Highlight dropdown
     ModernUI:Tween(self.Instance, {
-        BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.15)
+        BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.2)
     }, ModernUI.Config.Animation.TweenInfo)
     
     ModernUI:Tween(self.Stroke, {
-        Color = ModernUI.Config.Theme.Accent,
         Transparency = 0
     }, ModernUI.Config.Animation.TweenInfo)
     
@@ -318,9 +294,11 @@ end
 
 -- Close the dropdown
 function Dropdown:Close()
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
+    
     if not self.IsOpen then return self end
     
-    local ModernUI = require(script.Parent.ModernUI)
     self.IsOpen = false
     
     -- Rotate arrow icon back
@@ -331,142 +309,155 @@ function Dropdown:Close()
     -- Collapse list container
     ModernUI:Tween(self.ListContainer, {
         Size = UDim2.new(1, 0, 0, 0)
-    }, ModernUI.Config.Animation.TweenInfo, function()
-        self.ListContainer.Visible = false
-    end)
+    }, ModernUI.Config.Animation.TweenInfo)
     
-    -- Reset dropdown appearance if not hovering
+    -- Return to normal appearance
     ModernUI:Tween(self.Instance, {
         BackgroundColor3 = ModernUI.Config.Theme.Secondary
     }, ModernUI.Config.Animation.TweenInfo)
     
     ModernUI:Tween(self.Stroke, {
-        Color = ModernUI.Config.Theme.Accent,
         Transparency = 0.5
     }, ModernUI.Config.Animation.TweenInfo)
+    
+    -- Hide container after animation
+    task.delay(ModernUI.Config.Animation.TweenInfo.Time, function()
+        if not self.IsOpen then
+            self.ListContainer.Visible = false
+        end
+    end)
+    
+    return self
+end
+
+-- Select an option
+function Dropdown:SelectOption(option, silentMode)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
+    
+    -- Update the selected option
+    local previousOption = self.SelectedOption
+    self.SelectedOption = option
+    
+    -- Update the selected label
+    self.SelectedLabel.Text = option.Text
+    self.SelectedLabel.TextColor3 = ModernUI.Config.Theme.Text
+    
+    -- Call the callbacks if not in silent mode and value changed
+    if not silentMode and (not previousOption or previousOption.Value ~= option.Value) then
+        for _, callback in ipairs(self.Callbacks) do
+            task.spawn(function()
+                callback(option.Value, option.Text)
+            end)
+        end
+    end
+    
+    return self
+end
+
+-- Register a callback function for when the selected option changes
+function Dropdown:OnChanged(callback)
+    table.insert(self.Callbacks, callback)
+    return self
+end
+
+-- Set the value of the dropdown
+function Dropdown:SetValue(value, silentMode)
+    for _, option in ipairs(self.Options) do
+        if option.Value == value then
+            self:SelectOption(option, silentMode)
+            return self
+        end
+    end
+    
+    -- Value not found, select first option if available
+    if #self.Options > 0 then
+        self:SelectOption(self.Options[1], silentMode)
+    end
     
     return self
 end
 
 -- Clear all options
 function Dropdown:ClearOptions()
-    -- Remove all option buttons
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
+    
+    -- Close the dropdown if open
+    if self.IsOpen then
+        self:Close()
+    end
+    
+    -- Clear options data
+    self.Options = {}
+    self.SelectedOption = nil
+    
+    -- Reset selected label
+    self.SelectedLabel.Text = "Select an option"
+    self.SelectedLabel.TextColor3 = ModernUI.Config.Theme.TextDark
+    
+    -- Destroy option buttons
     for _, button in ipairs(self.OptionButtons) do
         button:Destroy()
     end
-    
-    -- Clear options
-    self.Options = {}
     self.OptionButtons = {}
-    
-    -- Reset selected option
-    self.SelectedOption = nil
-    self.SelectedLabel.Text = self.SelectedLabel.Text
-    self.SelectedLabel.TextColor3 = require(script.Parent.ModernUI).Config.Theme.TextDark
-    
-    -- Update list height
-    self:UpdateListHeight()
-    
-    return self
-end
-
--- Set options
-function Dropdown:SetOptions(options)
-    self:ClearOptions()
-    
-    for _, option in ipairs(options) do
-        self:AddOption(option)
-    end
-    
-    return self
-end
-
--- Set the maximum number of visible items
-function Dropdown:SetMaxVisibleItems(maxItems)
-    self.MaxVisibleItems = maxItems
-    self:UpdateListHeight()
-    return self
-end
-
--- Register a callback function for when an option is selected
-function Dropdown:OnChanged(callback)
-    table.insert(self.Callbacks, callback)
-    return self
-end
-
--- Set the selected option by value
-function Dropdown:SetValue(value)
-    for _, option in ipairs(self.Options) do
-        if option.Value == value then
-            self:SelectOption(option)
-            break
-        end
-    end
     
     return self
 end
 
 -- Set the enabled state of the dropdown
 function Dropdown:SetEnabled(enabled)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
+    
     self.Enabled = enabled
     
-    local ModernUI = require(script.Parent.ModernUI)
+    if not enabled and self.IsOpen then
+        self:Close()
+    end
     
     if enabled then
         ModernUI:Tween(self.Instance, {
             BackgroundColor3 = ModernUI.Config.Theme.Secondary
         })
         ModernUI:Tween(self.SelectedLabel, {
-            TextColor3 = self.SelectedOption and ModernUI.Config.Theme.Text or ModernUI.Config.Theme.TextDark
+            TextColor3 = self.SelectedOption and ModernUI.Config.Theme.Text or ModernUI.Config.Theme.TextDark,
+            TextTransparency = 0
         })
         ModernUI:Tween(self.ArrowIcon, {
-            ImageColor3 = ModernUI.Config.Theme.TextDark
+            ImageColor3 = ModernUI.Config.Theme.TextDark,
+            ImageTransparency = 0
         })
     else
         ModernUI:Tween(self.Instance, {
             BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(Color3.new(0, 0, 0), 0.5)
         })
         ModernUI:Tween(self.SelectedLabel, {
-            TextColor3 = ModernUI.Config.Theme.TextDark:Lerp(Color3.new(0, 0, 0), 0.5)
+            TextColor3 = ModernUI.Config.Theme.TextDark,
+            TextTransparency = 0.3
         })
         ModernUI:Tween(self.ArrowIcon, {
-            ImageColor3 = ModernUI.Config.Theme.TextDark:Lerp(Color3.new(0, 0, 0), 0.5)
+            ImageColor3 = ModernUI.Config.Theme.TextDark:Lerp(Color3.new(0, 0, 0), 0.3),
+            ImageTransparency = 0.3
         })
-        
-        -- Close dropdown if open
-        if self.IsOpen then
-            self:Close()
-        end
     end
     
     return self
 end
 
--- Set custom colors
-function Dropdown:SetColors(backgroundColor, textColor, placeholderColor, accentColor)
-    if backgroundColor then
-        self.Instance.BackgroundColor3 = backgroundColor
-    end
-    
-    if textColor and self.SelectedOption then
-        self.SelectedLabel.TextColor3 = textColor
-    end
-    
-    if placeholderColor and not self.SelectedOption then
-        self.SelectedLabel.TextColor3 = placeholderColor
-    end
-    
-    if accentColor then
-        self.Stroke.Color = accentColor
-    end
-    
+-- Set the maximum number of visible items
+function Dropdown:SetMaxVisibleItems(count)
+    self.MaxVisibleItems = count
     return self
 end
 
--- Set the placeholder text
-function Dropdown:SetPlaceholder(placeholder)
-    if not self.SelectedOption then
-        self.SelectedLabel.Text = placeholder
+-- Set the option height
+function Dropdown:SetOptionHeight(height)
+    self.OptionHeight = height
+    
+    -- Update all option buttons
+    for _, button in ipairs(self.OptionButtons) do
+        button.Size = UDim2.new(1, -10, 0, height)
     end
     
     return self
@@ -481,12 +472,6 @@ end
 -- Set the position of the dropdown
 function Dropdown:SetPosition(position)
     self.Instance.Position = position
-    return self
-end
-
--- Set the anchor point of the dropdown
-function Dropdown:SetAnchorPoint(anchorPoint)
-    self.Instance.AnchorPoint = anchorPoint
     return self
 end
 

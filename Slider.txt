@@ -9,7 +9,8 @@ Slider.__index = Slider
 
 -- Create a new slider
 function Slider.new(parent, text, min, max, default, size, position)
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     -- Default properties
     local sliderSize = size or UDim2.new(0, 200, 0, 50)
@@ -161,7 +162,8 @@ end
 function Slider:StartDragging()
     if not self.Enabled then return end
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     self.Dragging = true
     
     -- Make knob larger when dragging
@@ -192,70 +194,82 @@ end
 function Slider:StopDragging()
     if not self.Enabled then return end
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     self.Dragging = false
     
     -- Return knob to normal size
     ModernUI:Tween(self.Knob, {Size = UDim2.new(0, 16, 0, 16)}, TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
 end
 
--- Update the slider value based on mouse position
+-- Update slider value based on mouse position
 function Slider:UpdateValue()
-    if not self.Enabled or not self.Dragging then return end
+    if not self.Enabled then return end
     
-    local mouse = game:GetService("Players").LocalPlayer:GetMouse()
-    local trackPosition = self.Track.AbsolutePosition.X
-    local trackWidth = self.Track.AbsoluteSize.X
-    local mousePosition = mouse.X
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
-    -- Calculate the normalized value (0-1)
-    local normalizedValue = math.clamp((mousePosition - trackPosition) / trackWidth, 0, 1)
+    local mouse = UserInputService:GetMouseLocation()
+    local trackStart = self.Track.AbsolutePosition.X
+    local trackEnd = trackStart + self.Track.AbsoluteSize.X
+    local mouseX = math.clamp(mouse.X, trackStart, trackEnd)
     
-    -- Calculate the actual value based on min/max
-    local value = self.Min + (normalizedValue * (self.Max - self.Min))
+    -- Calculate relative position (0-1)
+    local relativePos = (mouseX - trackStart) / (trackEnd - trackStart)
+    
+    -- Convert to value range
+    local value = self.Min + (self.Max - self.Min) * relativePos
     
     -- Apply precision
     if self.Precision > 0 then
-        local multiplier = 10 ^ self.Precision
-        value = math.floor(value * multiplier + 0.5) / multiplier
+        local factor = 10 ^ self.Precision
+        value = math.floor(value * factor + 0.5) / factor
     else
         value = math.floor(value + 0.5)
     end
     
-    -- Set the value
+    -- Set value
     self:SetValue(value)
 end
 
 -- Set the slider value
-function Slider:SetValue(value, silentMode)
-    local ModernUI = require(script.Parent.ModernUI)
+function Slider:SetValue(value, silent)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
-    -- Clamp the value to the range
+    -- Clamp value to range
     value = math.clamp(value, self.Min, self.Max)
     
-    -- Store the value
+    -- Check if value changed
+    local changed = self.Value ~= value
     self.Value = value
     
-    -- Update the visual display
-    local normalizedValue = (value - self.Min) / (self.Max - self.Min)
+    -- Update UI
+    local relativePos = (value - self.Min) / (self.Max - self.Min)
     
-    -- Update fill and knob position
-    self.Fill.Size = UDim2.new(normalizedValue, 0, 1, 0)
-    self.Knob.Position = UDim2.new(1, 0, 0.5, 0)
-    
-    -- Update the value label
-    local displayValue = value
+    -- Format display value
+    local displayValue
     if self.Precision > 0 then
-        local formatString = "%." .. self.Precision .. "f"
-        displayValue = string.format(formatString, value)
+        local format = "%." .. self.Precision .. "f"
+        displayValue = string.format(format, value)
     else
-        displayValue = tostring(math.floor(value))
+        displayValue = tostring(math.floor(value + 0.5))
     end
     
-    self.ValueLabel.Text = displayValue .. self.ValueSuffix
+    -- Add suffix if specified
+    if self.ValueSuffix ~= "" then
+        displayValue = displayValue .. self.ValueSuffix
+    end
     
-    -- Call registered callbacks if not in silent mode
-    if not silentMode then
+    self.ValueLabel.Text = displayValue
+    
+    -- Tween fill and knob position
+    ModernUI:Tween(self.Fill, {
+        Size = UDim2.new(relativePos, 0, 1, 0)
+    }, TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    
+    -- Trigger callbacks if value changed and not silent
+    if changed and not silent then
         for _, callback in ipairs(self.Callbacks) do
             task.spawn(function()
                 callback(value)
@@ -272,23 +286,25 @@ function Slider:OnChanged(callback)
     return self
 end
 
--- Set the text of the slider
-function Slider:SetText(text)
-    self.Label.Text = text
-    return self
-end
-
--- Set the precision of the value display (number of decimal places)
+-- Set the precision of the slider value (number of decimal places)
 function Slider:SetPrecision(precision)
     self.Precision = precision
     self:SetValue(self.Value, true) -- Update display with new precision
     return self
 end
 
--- Set a suffix for the value display (e.g., "%", "ms", etc.)
+-- Set a suffix for the value display (e.g. "%", "px", etc.)
 function Slider:SetValueSuffix(suffix)
     self.ValueSuffix = suffix
     self:SetValue(self.Value, true) -- Update display with new suffix
+    return self
+end
+
+-- Set the range of the slider
+function Slider:SetRange(min, max)
+    self.Min = min
+    self.Max = max
+    self:SetValue(self.Value, true) -- Clamp current value to new range
     return self
 end
 
@@ -296,50 +312,47 @@ end
 function Slider:SetEnabled(enabled)
     self.Enabled = enabled
     
-    local ModernUI = require(script.Parent.ModernUI)
+    -- Get ModernUI from the shared environment
+    local ModernUI = getgenv().ModernUIComponents.ModernUI
     
     if enabled then
         ModernUI:Tween(self.Label, {
-            TextColor3 = ModernUI.Config.Theme.Text,
-            TextTransparency = 0
+            TextColor3 = ModernUI.Config.Theme.Text
         })
         ModernUI:Tween(self.ValueLabel, {
-            TextColor3 = ModernUI.Config.Theme.Accent,
-            TextTransparency = 0
-        })
-        ModernUI:Tween(self.Fill, {
-            BackgroundColor3 = ModernUI.Config.Theme.Accent
-        })
-        ModernUI:Tween(self.Knob, {
-            BackgroundColor3 = ModernUI.Config.Theme.Accent
+            TextColor3 = ModernUI.Config.Theme.Accent
         })
         ModernUI:Tween(self.Track, {
             BackgroundColor3 = ModernUI.Config.Theme.Secondary
         })
+        ModernUI:Tween(self.Fill, {
+            BackgroundColor3 = ModernUI.Config.Theme.Accent
+        })
+        ModernUI:Tween(self.Knob, {
+            BackgroundColor3 = ModernUI.Config.Theme.Accent
+        })
     else
         ModernUI:Tween(self.Label, {
-            TextColor3 = ModernUI.Config.Theme.TextDark,
-            TextTransparency = 0.3
+            TextColor3 = ModernUI.Config.Theme.TextDark
         })
         ModernUI:Tween(self.ValueLabel, {
-            TextColor3 = ModernUI.Config.Theme.TextDark,
-            TextTransparency = 0.3
+            TextColor3 = ModernUI.Config.Theme.TextDark
+        })
+        ModernUI:Tween(self.Track, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(Color3.new(0, 0, 0), 0.3)
         })
         ModernUI:Tween(self.Fill, {
             BackgroundColor3 = ModernUI.Config.Theme.Accent:Lerp(Color3.new(0, 0, 0), 0.5)
         })
         ModernUI:Tween(self.Knob, {
             BackgroundColor3 = ModernUI.Config.Theme.Accent:Lerp(Color3.new(0, 0, 0), 0.5)
-        })
-        ModernUI:Tween(self.Track, {
-            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(Color3.new(0, 0, 0), 0.2)
         })
     end
     
     return self
 end
 
--- Set custom colors
+-- Set custom colors for the slider
 function Slider:SetColors(labelColor, valueColor, trackColor, fillColor, knobColor)
     if labelColor then
         self.Label.TextColor3 = labelColor
@@ -360,22 +373,6 @@ function Slider:SetColors(labelColor, valueColor, trackColor, fillColor, knobCol
     if knobColor then
         self.Knob.BackgroundColor3 = knobColor
     end
-    
-    return self
-end
-
--- Set the minimum and maximum values
-function Slider:SetRange(min, max)
-    -- Ensure max > min
-    if max <= min then
-        max = min + 1
-    end
-    
-    self.Min = min
-    self.Max = max
-    
-    -- Update current value to ensure it's still in range
-    self:SetValue(self.Value, true)
     
     return self
 end
