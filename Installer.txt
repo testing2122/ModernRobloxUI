@@ -1,6 +1,10 @@
 -- Modern UI Library Installer
 -- This script will download and install all UI components
 
+-- Create a shared environment for modules to reference each other
+if not getgenv then getgenv = function() return _G end end
+getgenv().ModernUIComponents = {}
+
 local function DownloadFile(url, name)
     local success, content = pcall(function()
         return game:HttpGet(url)
@@ -29,6 +33,8 @@ local function LoadComponent(name)
         end)
         
         if success then
+            -- Store the loaded component in the ModernUIComponents table for reference
+            getgenv().ModernUIComponents[name] = result
             return result
         else
             warn("Failed to load " .. name .. ": " .. tostring(result))
@@ -39,7 +45,7 @@ local function LoadComponent(name)
 end
 
 -- Repository URL (change this to your actual repository URL)
-local repoUrl = "https://raw.githubusercontent.com/username/ModernRobloxUI/main/"
+local repoUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/main/"
 
 -- UI components to download
 local components = {

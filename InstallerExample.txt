@@ -1,8 +1,13 @@
 -- Installer Example for Modern UI Library
 -- This example shows how to use the installer script for quick setup
 
+-- Create a shared environment for modules to reference each other
+if not getgenv then getgenv = function() return _G end end
+getgenv().ModernUIComponents = {}
+
 -- Load the installer (replace with your actual URL)
-local ModernUILib = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Installer.txt"))()
+local installerUrl = "https://raw.githubusercontent.com/testing2122/ModernRobloxUI/main/Installer.txt"
+local ModernUILib = loadstring(game:HttpGet(installerUrl))()
 
 -- Check if the library was loaded successfully
 if not ModernUILib then
@@ -18,6 +23,15 @@ local Toggle = ModernUILib.Toggle
 local Slider = ModernUILib.Slider
 local Dropdown = ModernUILib.Dropdown
 local Notification = ModernUILib.Notification
+
+-- Store all components in the shared environment
+getgenv().ModernUIComponents.ModernUI = ModernUI
+getgenv().ModernUIComponents.Button = Button
+getgenv().ModernUIComponents.TextInput = TextInput
+getgenv().ModernUIComponents.Toggle = Toggle
+getgenv().ModernUIComponents.Slider = Slider
+getgenv().ModernUIComponents.Dropdown = Dropdown
+getgenv().ModernUIComponents.Notification = Notification
 
 -- Quick creation method
 local ui = ModernUILib.CreateUI("Quick Example")
