@@ -1,0 +1,239 @@
+-- Toggle Component for ModernUI
+-- This file contains the implementation of customizable toggles with animations
+
+local Toggle = {}
+Toggle.__index = Toggle
+
+-- Create a new toggle
+function Toggle.new(parent, text, size, position)
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Default properties
+    local toggleSize = size or UDim2.new(0, 200, 0, 40)
+    local togglePosition = position or UDim2.new(0.5, 0, 0, 0)
+    
+    -- Create the toggle container
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Name = "ToggleFrame_" .. text:gsub("%s+", "_")
+    toggleFrame.Size = toggleSize
+    toggleFrame.Position = togglePosition
+    toggleFrame.AnchorPoint = Vector2.new(0.5, 0)
+    toggleFrame.BackgroundTransparency = 1
+    toggleFrame.Parent = parent
+    
+    -- Create toggle text
+    local toggleText = Instance.new("TextLabel")
+    toggleText.Name = "ToggleText"
+    toggleText.Size = UDim2.new(1, -60, 1, 0)
+    toggleText.Position = UDim2.new(0, 0, 0, 0)
+    toggleText.BackgroundTransparency = 1
+    toggleText.Text = text
+    toggleText.TextColor3 = ModernUI.Config.Theme.Text
+    toggleText.Font = ModernUI.Config.Font
+    toggleText.TextSize = 16
+    toggleText.TextXAlignment = Enum.TextXAlignment.Left
+    toggleText.Parent = toggleFrame
+    
+    -- Create toggle switch background
+    local toggleBackground = Instance.new("Frame")
+    toggleBackground.Name = "Background"
+    toggleBackground.Size = UDim2.new(0, 44, 0, 24)
+    toggleBackground.Position = UDim2.new(1, -44, 0.5, 0)
+    toggleBackground.AnchorPoint = Vector2.new(0, 0.5)
+    toggleBackground.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    toggleBackground.Parent = toggleFrame
+    
+    -- Add corner to toggle background
+    local backgroundCorner = ModernUI:CreateCorner(toggleBackground, UDim.new(1, 0))
+    
+    -- Create toggle knob
+    local toggleKnob = Instance.new("Frame")
+    toggleKnob.Name = "Knob"
+    toggleKnob.Size = UDim2.new(0, 18, 0, 18)
+    toggleKnob.Position = UDim2.new(0, 3, 0.5, 0)
+    toggleKnob.AnchorPoint = Vector2.new(0, 0.5)
+    toggleKnob.BackgroundColor3 = ModernUI.Config.Theme.Text
+    toggleKnob.Parent = toggleBackground
+    
+    -- Add corner to toggle knob
+    local knobCorner = ModernUI:CreateCorner(toggleKnob, UDim.new(1, 0))
+    
+    -- Add click detection
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Name = "ToggleButton"
+    toggleButton.Size = UDim2.new(1, 0, 1, 0)
+    toggleButton.BackgroundTransparency = 1
+    toggleButton.Text = ""
+    toggleButton.Parent = toggleFrame
+    
+    -- Toggle object with properties and methods
+    local toggle = {
+        Instance = toggleFrame,
+        Text = toggleText,
+        Background = toggleBackground,
+        Knob = toggleKnob,
+        Button = toggleButton,
+        Value = false,
+        Enabled = true,
+        Callbacks = {}
+    }
+    setmetatable(toggle, Toggle)
+    
+    -- Set up events
+    toggleButton.MouseButton1Click:Connect(function()
+        if toggle.Enabled then
+            toggle:SetValue(not toggle.Value)
+        end
+    end)
+    
+    -- Hover effects
+    toggleButton.MouseEnter:Connect(function()
+        if toggle.Enabled then
+            ModernUI:Tween(toggleBackground, {
+                BackgroundColor3 = toggle.Value and 
+                    ModernUI.Config.Theme.Accent:Lerp(Color3.new(1, 1, 1), 0.2) or 
+                    ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.2)
+            }, ModernUI.Config.Animation.HoverTweenInfo)
+        end
+    end)
+    
+    toggleButton.MouseLeave:Connect(function()
+        if toggle.Enabled then
+            ModernUI:Tween(toggleBackground, {
+                BackgroundColor3 = toggle.Value and 
+                    ModernUI.Config.Theme.Accent or 
+                    ModernUI.Config.Theme.Secondary
+            }, ModernUI.Config.Animation.HoverTweenInfo)
+        end
+    end)
+    
+    return toggle
+end
+
+-- Set toggle value
+function Toggle:SetValue(value, silentMode)
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Update value
+    self.Value = value
+    
+    -- Animate toggle switch
+    if value then
+        -- ON state
+        ModernUI:Tween(self.Background, {
+            BackgroundColor3 = ModernUI.Config.Theme.Accent
+        }, ModernUI.Config.Animation.TweenInfo)
+        
+        ModernUI:Tween(self.Knob, {
+            Position = UDim2.new(0, 23, 0.5, 0)
+        }, ModernUI.Config.Animation.TweenInfo)
+    else
+        -- OFF state
+        ModernUI:Tween(self.Background, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary
+        }, ModernUI.Config.Animation.TweenInfo)
+        
+        ModernUI:Tween(self.Knob, {
+            Position = UDim2.new(0, 3, 0.5, 0)
+        }, ModernUI.Config.Animation.TweenInfo)
+    end
+    
+    -- Call registered callbacks if not in silent mode
+    if not silentMode then
+        for _, callback in ipairs(self.Callbacks) do
+            task.spawn(function()
+                callback(value)
+            end)
+        end
+    end
+    
+    return self
+end
+
+-- Register a callback function for when the toggle changes
+function Toggle:OnChanged(callback)
+    table.insert(self.Callbacks, callback)
+    return self
+end
+
+-- Set the text of the toggle
+function Toggle:SetText(text)
+    self.Text.Text = text
+    return self
+end
+
+-- Set the enabled state of the toggle
+function Toggle:SetEnabled(enabled)
+    self.Enabled = enabled
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    if enabled then
+        ModernUI:Tween(self.Text, {
+            TextColor3 = ModernUI.Config.Theme.Text,
+            TextTransparency = 0
+        })
+        ModernUI:Tween(self.Knob, {
+            BackgroundColor3 = ModernUI.Config.Theme.Text
+        })
+    else
+        ModernUI:Tween(self.Text, {
+            TextColor3 = ModernUI.Config.Theme.TextDark,
+            TextTransparency = 0.3
+        })
+        ModernUI:Tween(self.Knob, {
+            BackgroundColor3 = ModernUI.Config.Theme.TextDark
+        })
+        
+        -- Dim background
+        ModernUI:Tween(self.Background, {
+            BackgroundColor3 = self.Value and
+                ModernUI.Config.Theme.Accent:Lerp(Color3.new(0, 0, 0), 0.5) or
+                ModernUI.Config.Theme.Secondary:Lerp(Color3.new(0, 0, 0), 0.2)
+        })
+    end
+    
+    return self
+end
+
+-- Set custom colors
+function Toggle:SetColors(textColor, knobColor, activeColor, inactiveColor)
+    if textColor then
+        self.Text.TextColor3 = textColor
+    end
+    
+    if knobColor then
+        self.Knob.BackgroundColor3 = knobColor
+    end
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    if activeColor and self.Value then
+        self.Background.BackgroundColor3 = activeColor
+    elseif inactiveColor and not self.Value then
+        self.Background.BackgroundColor3 = inactiveColor
+    end
+    
+    return self
+end
+
+-- Set the size of the toggle
+function Toggle:SetSize(size)
+    self.Instance.Size = size
+    return self
+end
+
+-- Set the position of the toggle
+function Toggle:SetPosition(position)
+    self.Instance.Position = position
+    return self
+end
+
+-- Set the anchor point of the toggle
+function Toggle:SetAnchorPoint(anchorPoint)
+    self.Instance.AnchorPoint = anchorPoint
+    return self
+end
+
+-- Return the module
+return Toggle 

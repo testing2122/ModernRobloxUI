@@ -1,0 +1,399 @@
+-- Modern UI Library for Roblox
+-- Created for exploit environments
+-- This is the core module that handles the creation of UI elements
+
+local ModernUI = {}
+ModernUI.__index = ModernUI
+
+-- Constants
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local Mouse = Player:GetMouse()
+
+-- Configuration
+ModernUI.Config = {
+    Theme = {
+        Primary = Color3.fromRGB(45, 50, 60),
+        Secondary = Color3.fromRGB(35, 40, 50),
+        Accent = Color3.fromRGB(65, 125, 225),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDark = Color3.fromRGB(180, 180, 180),
+        Error = Color3.fromRGB(225, 65, 65),
+        Success = Color3.fromRGB(65, 225, 95),
+        Warning = Color3.fromRGB(225, 180, 65)
+    },
+    Animation = {
+        TweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+        HoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+        FadeTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    },
+    Font = Enum.Font.GothamMedium,
+    CornerRadius = UDim.new(0, 6),
+    StrokeThickness = 1.5,
+    Elements = {},
+    Notifications = {},
+    DragInstances = {}
+}
+
+-- Utility Functions
+function ModernUI:SetTheme(theme)
+    for key, value in pairs(theme) do
+        if ModernUI.Config.Theme[key] then
+            ModernUI.Config.Theme[key] = value
+        end
+    end
+    
+    -- Update all existing elements
+    self:UpdateElements()
+end
+
+function ModernUI:UpdateElements()
+    for _, element in ipairs(ModernUI.Config.Elements) do
+        if element.UpdateTheme then
+            element:UpdateTheme()
+        end
+    end
+end
+
+function ModernUI:Tween(instance, properties, customTweenInfo)
+    local tweenInfo = customTweenInfo or ModernUI.Config.Animation.TweenInfo
+    local tween = TweenService:Create(instance, tweenInfo, properties)
+    tween:Play()
+    return tween
+end
+
+function ModernUI:CreateStroke(parent, color, thickness, transparency)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or ModernUI.Config.Theme.Accent
+    stroke.Thickness = thickness or ModernUI.Config.StrokeThickness
+    stroke.Transparency = transparency or 0
+    stroke.Parent = parent
+    return stroke
+end
+
+function ModernUI:CreateCorner(parent, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = radius or ModernUI.Config.CornerRadius
+    corner.Parent = parent
+    return corner
+end
+
+function ModernUI:CreatePadding(parent, padding)
+    local uiPadding = Instance.new("UIPadding")
+    if type(padding) == "number" then
+        uiPadding.PaddingTop = UDim.new(0, padding)
+        uiPadding.PaddingBottom = UDim.new(0, padding)
+        uiPadding.PaddingLeft = UDim.new(0, padding)
+        uiPadding.PaddingRight = UDim.new(0, padding)
+    else
+        uiPadding.PaddingTop = UDim.new(0, padding.Top or 0)
+        uiPadding.PaddingBottom = UDim.new(0, padding.Bottom or 0)
+        uiPadding.PaddingLeft = UDim.new(0, padding.Left or 0)
+        uiPadding.PaddingRight = UDim.new(0, padding.Right or 0)
+    end
+    uiPadding.Parent = parent
+    return uiPadding
+end
+
+-- Make draggable
+function ModernUI:MakeDraggable(dragFrame, dragArea)
+    local dragging = false
+    local dragInput, mousePos, framePos
+    
+    dragArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            mousePos = input.Position
+            framePos = dragFrame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    dragArea.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - mousePos
+            dragFrame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+        end
+    end)
+    
+    table.insert(ModernUI.Config.DragInstances, {dragFrame = dragFrame, dragArea = dragArea})
+    return dragFrame
+end
+
+-- Create Main UI Interface
+function ModernUI:Create(title, size)
+    -- Make sure we're running inside an exploit environment
+    if not (getgenv or getrenv) then
+        warn("ModernUI must be used in an exploiting environment")
+        return nil
+    end
+    
+    -- Create main ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "ModernUI_" .. title:gsub("%s+", "_")
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.IgnoreGuiInset = true
+    
+    -- Apply protection if in exploit environment
+    if syn and syn.protect_gui then
+        syn.protect_gui(screenGui)
+        screenGui.Parent = game:GetService("CoreGui")
+    elseif gethui then
+        screenGui.Parent = gethui()
+    elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
+        screenGui.Parent = game:GetService("CoreGui").RobloxGui
+    else
+        screenGui.Parent = game:GetService("CoreGui")
+    end
+    
+    -- Create background frame with blur effect
+    local backgroundFrame = Instance.new("Frame")
+    backgroundFrame.Name = "Background"
+    backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
+    backgroundFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    backgroundFrame.BackgroundTransparency = 0.5
+    backgroundFrame.Parent = screenGui
+    
+    -- Main container
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = size or UDim2.new(0, 500, 0, 350)
+    mainFrame.BackgroundColor3 = ModernUI.Config.Theme.Primary
+    mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    mainFrame.ClipsDescendants = true
+    mainFrame.Parent = screenGui
+    
+    -- Add corner and stroke
+    self:CreateCorner(mainFrame)
+    self:CreateStroke(mainFrame, ModernUI.Config.Theme.Accent, 1)
+    
+    -- Create title bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Size = UDim2.new(1, 0, 0, 35)
+    titleBar.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    titleBar.Parent = mainFrame
+    
+    -- Add corner to title bar
+    local titleCorner = self:CreateCorner(titleBar)
+    
+    -- Title
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "Title"
+    titleLabel.Size = UDim2.new(1, -40, 1, 0)
+    titleLabel.Position = UDim2.new(0, 10, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = ModernUI.Config.Theme.Text
+    titleLabel.Font = ModernUI.Config.Font
+    titleLabel.TextSize = 18
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = titleBar
+    
+    -- Add close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Size = UDim2.new(0, 25, 0, 25)
+    closeButton.Position = UDim2.new(1, -30, 0, 5)
+    closeButton.BackgroundColor3 = ModernUI.Config.Theme.Error
+    closeButton.Text = ""
+    closeButton.AutoButtonColor = false
+    closeButton.Parent = titleBar
+    
+    -- Corner for close button
+    self:CreateCorner(closeButton, UDim.new(0, 4))
+    
+    -- Close button X
+    local closeX = Instance.new("TextLabel")
+    closeX.Name = "X"
+    closeX.Size = UDim2.new(1, 0, 1, 0)
+    closeX.BackgroundTransparency = 1
+    closeX.Text = "×"
+    closeX.TextColor3 = Color3.new(1, 1, 1)
+    closeX.Font = Enum.Font.GothamBold
+    closeX.TextSize = 18
+    closeX.Parent = closeButton
+    
+    -- Content container
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "Content"
+    contentFrame.Size = UDim2.new(1, 0, 1, -35)
+    contentFrame.Position = UDim2.new(0, 0, 0, 35)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = mainFrame
+    
+    -- Add content padding
+    self:CreatePadding(contentFrame, 10)
+    
+    -- Make the UI draggable
+    self:MakeDraggable(mainFrame, titleBar)
+    
+    -- Close button hover and click effects
+    closeButton.MouseEnter:Connect(function()
+        self:Tween(closeButton, {BackgroundColor3 = Color3.fromRGB(255, 100, 100)}, ModernUI.Config.Animation.HoverTweenInfo)
+    end)
+    
+    closeButton.MouseLeave:Connect(function()
+        self:Tween(closeButton, {BackgroundColor3 = ModernUI.Config.Theme.Error}, ModernUI.Config.Animation.HoverTweenInfo)
+    end)
+    
+    closeButton.MouseButton1Click:Connect(function()
+        self:Tween(mainFrame, {Size = UDim2.new(0, size.X.Offset, 0, 0), Position = UDim2.new(0.5, 0, 0.5, size.Y.Offset/2)})
+        self:Tween(backgroundFrame, {BackgroundTransparency = 1}, nil, function()
+            wait(0.3)
+            screenGui:Destroy()
+        end)
+    end)
+    
+    -- Create open animation
+    mainFrame.Size = UDim2.new(0, size.X.Offset, 0, 0)
+    backgroundFrame.BackgroundTransparency = 1
+    self:Tween(mainFrame, {Size = size})
+    self:Tween(backgroundFrame, {BackgroundTransparency = 0.5})
+    
+    -- Create container for tabs if needed
+    local tabContainer = Instance.new("Frame")
+    tabContainer.Name = "TabContainer"
+    tabContainer.Size = UDim2.new(1, 0, 1, 0)
+    tabContainer.BackgroundTransparency = 1
+    tabContainer.Parent = contentFrame
+    
+    -- Store UI references
+    local ui = {
+        ScreenGui = screenGui,
+        Background = backgroundFrame,
+        MainFrame = mainFrame,
+        TitleBar = titleBar,
+        TitleLabel = titleLabel,
+        CloseButton = closeButton,
+        ContentFrame = contentFrame,
+        TabContainer = tabContainer,
+        Tabs = {},
+        ActiveTab = nil,
+        
+        -- Function to add a tab
+        AddTab = function(self, tabName)
+            -- Create tab button
+            local tabButton = Instance.new("TextButton")
+            tabButton.Name = tabName .. "Button"
+            tabButton.Size = UDim2.new(0, 100, 0, 30)
+            tabButton.Position = UDim2.new(0, 10 + (110 * (#self.Tabs)), 0, 5)
+            tabButton.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+            tabButton.Text = tabName
+            tabButton.TextColor3 = ModernUI.Config.Theme.TextDark
+            tabButton.Font = ModernUI.Config.Font
+            tabButton.TextSize = 14
+            tabButton.AutoButtonColor = false
+            tabButton.Parent = self.ContentFrame
+            
+            -- Add corner
+            ModernUI:CreateCorner(tabButton)
+            
+            -- Create tab content
+            local tabContent = Instance.new("ScrollingFrame")
+            tabContent.Name = tabName .. "Content"
+            tabContent.Size = UDim2.new(1, 0, 1, -40)
+            tabContent.Position = UDim2.new(0, 0, 0, 40)
+            tabContent.BackgroundTransparency = 1
+            tabContent.BorderSizePixel = 0
+            tabContent.ScrollBarThickness = 4
+            tabContent.ScrollBarImageColor3 = ModernUI.Config.Theme.Accent
+            tabContent.Visible = #self.Tabs == 0 -- First tab is visible by default
+            tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+            tabContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
+            tabContent.Parent = self.TabContainer
+            
+            -- Add padding
+            ModernUI:CreatePadding(tabContent, {Top = 5, Bottom = 5, Left = 10, Right = 10})
+            
+            -- Auto layout
+            local UIListLayout = Instance.new("UIListLayout")
+            UIListLayout.Padding = UDim.new(0, 10)
+            UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            UIListLayout.Parent = tabContent
+            
+            -- Button hover and click effects
+            tabButton.MouseEnter:Connect(function()
+                if self.ActiveTab ~= tabName then
+                    ModernUI:Tween(tabButton, {BackgroundColor3 = Color3.fromRGB(55, 60, 70)}, ModernUI.Config.Animation.HoverTweenInfo)
+                end
+            end)
+            
+            tabButton.MouseLeave:Connect(function()
+                if self.ActiveTab ~= tabName then
+                    ModernUI:Tween(tabButton, {BackgroundColor3 = ModernUI.Config.Theme.Secondary}, ModernUI.Config.Animation.HoverTweenInfo)
+                end
+            end)
+            
+            tabButton.MouseButton1Click:Connect(function()
+                self:SelectTab(tabName)
+            end)
+            
+            -- Store tab
+            local tab = {
+                Name = tabName,
+                Button = tabButton,
+                Content = tabContent,
+                Elements = {}
+            }
+            
+            table.insert(self.Tabs, tab)
+            
+            -- If first tab, set as active
+            if #self.Tabs == 1 then
+                self.ActiveTab = tabName
+                ModernUI:Tween(tabButton, {BackgroundColor3 = ModernUI.Config.Theme.Accent})
+                ModernUI:Tween(tabButton, {TextColor3 = ModernUI.Config.Theme.Text})
+            end
+            
+            return tab
+        end,
+        
+        -- Function to select a tab
+        SelectTab = function(self, tabName)
+            for _, tab in ipairs(self.Tabs) do
+                if tab.Name == tabName then
+                    tab.Content.Visible = true
+                    ModernUI:Tween(tab.Button, {BackgroundColor3 = ModernUI.Config.Theme.Accent})
+                    ModernUI:Tween(tab.Button, {TextColor3 = ModernUI.Config.Theme.Text})
+                    self.ActiveTab = tabName
+                else
+                    tab.Content.Visible = false
+                    ModernUI:Tween(tab.Button, {BackgroundColor3 = ModernUI.Config.Theme.Secondary})
+                    ModernUI:Tween(tab.Button, {TextColor3 = ModernUI.Config.Theme.TextDark})
+                end
+            end
+        end,
+        
+        -- Function to destroy UI
+        Destroy = function(self)
+            ModernUI:Tween(self.MainFrame, {Size = UDim2.new(0, size.X.Offset, 0, 0), Position = UDim2.new(0.5, 0, 0.5, size.Y.Offset/2)})
+            ModernUI:Tween(self.Background, {BackgroundTransparency = 1})
+            wait(0.3)
+            self.ScreenGui:Destroy()
+        end
+    }
+    
+    table.insert(ModernUI.Config.Elements, ui)
+    return ui
+end
+
+-- Return the module
+return ModernUI 

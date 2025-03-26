@@ -1,0 +1,307 @@
+-- Button Component for ModernUI
+-- This file contains the implementation of customizable buttons with animations
+
+local TweenService = game:GetService("TweenService")
+
+local Button = {}
+Button.__index = Button
+
+-- Create a new button
+function Button.new(parent, text, size, position)
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Default properties
+    local buttonSize = size or UDim2.new(0, 200, 0, 40)
+    local buttonPosition = position or UDim2.new(0.5, 0, 0, 0)
+    
+    -- Create the button
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Name = "ButtonFrame_" .. text:gsub("%s+", "_")
+    buttonFrame.Size = buttonSize
+    buttonFrame.Position = buttonPosition
+    buttonFrame.AnchorPoint = Vector2.new(0.5, 0)
+    buttonFrame.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    buttonFrame.Parent = parent
+    
+    -- Add corner to button
+    local corner = ModernUI:CreateCorner(buttonFrame)
+    
+    -- Add stroke (border)
+    local stroke = ModernUI:CreateStroke(buttonFrame, ModernUI.Config.Theme.Accent, 1.5, 0.5)
+    
+    -- Create button
+    local buttonInstance = Instance.new("TextButton")
+    buttonInstance.Name = "Button"
+    buttonInstance.Text = ""
+    buttonInstance.Size = UDim2.new(1, 0, 1, 0)
+    buttonInstance.BackgroundTransparency = 1
+    buttonInstance.AutoButtonColor = false
+    buttonInstance.ZIndex = 2
+    buttonInstance.Parent = buttonFrame
+    
+    -- Create button text
+    local buttonText = Instance.new("TextLabel")
+    buttonText.Name = "ButtonText"
+    buttonText.Size = UDim2.new(1, 0, 1, 0)
+    buttonText.BackgroundTransparency = 1
+    buttonText.Text = text
+    buttonText.TextColor3 = ModernUI.Config.Theme.Text
+    buttonText.Font = ModernUI.Config.Font
+    buttonText.TextSize = 16
+    buttonText.ZIndex = 3
+    buttonText.Parent = buttonFrame
+    
+    -- Create button ripple container (for click effect)
+    local rippleContainer = Instance.new("Frame")
+    rippleContainer.Name = "RippleContainer"
+    rippleContainer.Size = UDim2.new(1, 0, 1, 0)
+    rippleContainer.BackgroundTransparency = 1
+    rippleContainer.ClipsDescendants = true
+    rippleContainer.ZIndex = 1
+    rippleContainer.Parent = buttonFrame
+    
+    -- Button object with properties and methods
+    local button = {
+        Instance = buttonFrame,
+        Button = buttonInstance,
+        Text = buttonText,
+        Corner = corner,
+        Stroke = stroke,
+        RippleContainer = rippleContainer,
+        Hovering = false,
+        Pressing = false,
+        Enabled = true,
+        Callbacks = {}
+    }
+    setmetatable(button, Button)
+    
+    -- Set up events
+    buttonInstance.MouseEnter:Connect(function()
+        button:MouseEnter()
+    end)
+    
+    buttonInstance.MouseLeave:Connect(function()
+        button:MouseLeave()
+    end)
+    
+    buttonInstance.MouseButton1Down:Connect(function()
+        button:MouseDown()
+    end)
+    
+    buttonInstance.MouseButton1Up:Connect(function()
+        button:MouseUp()
+    end)
+    
+    buttonInstance.MouseButton1Click:Connect(function()
+        button:Click()
+    end)
+    
+    return button
+end
+
+-- Button animations and effects
+function Button:MouseEnter()
+    if not self.Enabled then return end
+    self.Hovering = true
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Hover animation
+    ModernUI:Tween(self.Instance, {
+        BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.3)
+    }, ModernUI.Config.Animation.HoverTweenInfo)
+    
+    ModernUI:Tween(self.Stroke, {
+        Transparency = 0
+    }, ModernUI.Config.Animation.HoverTweenInfo)
+end
+
+function Button:MouseLeave()
+    if not self.Enabled then return end
+    self.Hovering = false
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Reset to normal state
+    ModernUI:Tween(self.Instance, {
+        BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    }, ModernUI.Config.Animation.HoverTweenInfo)
+    
+    ModernUI:Tween(self.Stroke, {
+        Transparency = 0.5
+    }, ModernUI.Config.Animation.HoverTweenInfo)
+end
+
+function Button:MouseDown()
+    if not self.Enabled then return end
+    self.Pressing = true
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Press animation
+    ModernUI:Tween(self.Instance, {
+        BackgroundColor3 = ModernUI.Config.Theme.Accent
+    }, TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    
+    -- Create ripple effect
+    self:CreateRipple()
+end
+
+function Button:MouseUp()
+    if not self.Enabled then return end
+    self.Pressing = false
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Reset to hover state if still hovering
+    if self.Hovering then
+        ModernUI:Tween(self.Instance, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.3)
+        }, TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    else
+        ModernUI:Tween(self.Instance, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary
+        }, TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    end
+end
+
+function Button:Click()
+    if not self.Enabled then return end
+    
+    -- Call registered callbacks
+    for _, callback in ipairs(self.Callbacks) do
+        task.spawn(function()
+            callback()
+        end)
+    end
+end
+
+-- Ripple effect on click
+function Button:CreateRipple()
+    local ModernUI = require(script.Parent.ModernUI)
+    local mouse = game:GetService("Players").LocalPlayer:GetMouse()
+    
+    -- Get the position of the mouse relative to the button
+    local buttonPosition = self.Instance.AbsolutePosition
+    local buttonSize = self.Instance.AbsoluteSize
+    local mousePosition = Vector2.new(mouse.X, mouse.Y)
+    local relativePosition = mousePosition - buttonPosition
+    
+    -- Calculate the maximum radius needed to cover the button
+    local cornersDistances = {
+        (Vector2.new(0, 0) - relativePosition).Magnitude,
+        (Vector2.new(buttonSize.X, 0) - relativePosition).Magnitude,
+        (Vector2.new(0, buttonSize.Y) - relativePosition).Magnitude,
+        (Vector2.new(buttonSize.X, buttonSize.Y) - relativePosition).Magnitude
+    }
+    
+    local maxRadius = math.max(unpack(cornersDistances))
+    
+    -- Create the ripple circle
+    local ripple = Instance.new("Frame")
+    ripple.Name = "Ripple"
+    ripple.BackgroundColor3 = Color3.new(1, 1, 1)
+    ripple.BackgroundTransparency = 0.7
+    ripple.BorderSizePixel = 0
+    ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+    ripple.Position = UDim2.new(0, relativePosition.X, 0, relativePosition.Y)
+    ripple.Size = UDim2.new(0, 0, 0, 0)
+    ripple.ZIndex = 2
+    ripple.Parent = self.RippleContainer
+    
+    -- Add corner to ripple
+    local rippleCorner = Instance.new("UICorner")
+    rippleCorner.CornerRadius = UDim.new(1, 0)
+    rippleCorner.Parent = ripple
+    
+    -- Animate the ripple
+    local expandTween = TweenService:Create(
+        ripple,
+        TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+        {Size = UDim2.new(0, maxRadius * 2, 0, maxRadius * 2), BackgroundTransparency = 1}
+    )
+    
+    expandTween:Play()
+    
+    -- Clean up after animation
+    expandTween.Completed:Connect(function()
+        ripple:Destroy()
+    end)
+end
+
+-- Register a callback function for when the button is clicked
+function Button:OnClick(callback)
+    table.insert(self.Callbacks, callback)
+    return self
+end
+
+-- Set the text of the button
+function Button:SetText(text)
+    self.Text.Text = text
+    return self
+end
+
+-- Set the enabled state of the button
+function Button:SetEnabled(enabled)
+    self.Enabled = enabled
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    if enabled then
+        ModernUI:Tween(self.Instance, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary
+        })
+        ModernUI:Tween(self.Text, {
+            TextColor3 = ModernUI.Config.Theme.Text,
+            TextTransparency = 0
+        })
+    else
+        ModernUI:Tween(self.Instance, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(Color3.new(0, 0, 0), 0.5)
+        })
+        ModernUI:Tween(self.Text, {
+            TextColor3 = ModernUI.Config.Theme.TextDark,
+            TextTransparency = 0.3
+        })
+    end
+    
+    return self
+end
+
+-- Set custom colors for the button
+function Button:SetColors(backgroundColor, textColor, accentColor)
+    if backgroundColor then
+        self.Instance.BackgroundColor3 = backgroundColor
+    end
+    
+    if textColor then
+        self.Text.TextColor3 = textColor
+    end
+    
+    if accentColor then
+        self.Stroke.Color = accentColor
+    end
+    
+    return self
+end
+
+-- Set the size of the button
+function Button:SetSize(size)
+    self.Instance.Size = size
+    return self
+end
+
+-- Set the position of the button
+function Button:SetPosition(position)
+    self.Instance.Position = position
+    return self
+end
+
+-- Set the anchor point of the button
+function Button:SetAnchorPoint(anchorPoint)
+    self.Instance.AnchorPoint = anchorPoint
+    return self
+end
+
+-- Return the module
+return Button 

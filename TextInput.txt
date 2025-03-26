@@ -1,0 +1,378 @@
+-- TextInput Component for ModernUI
+-- This file contains the implementation of customizable text inputs with animations
+
+local TextInput = {}
+TextInput.__index = TextInput
+
+-- Create a new text input
+function TextInput.new(parent, placeholder, size, position)
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Default properties
+    local inputSize = size or UDim2.new(0, 200, 0, 40)
+    local inputPosition = position or UDim2.new(0.5, 0, 0, 0)
+    
+    -- Create the input container
+    local inputFrame = Instance.new("Frame")
+    inputFrame.Name = "InputFrame_" .. placeholder:gsub("%s+", "_")
+    inputFrame.Size = inputSize
+    inputFrame.Position = inputPosition
+    inputFrame.AnchorPoint = Vector2.new(0.5, 0)
+    inputFrame.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    inputFrame.Parent = parent
+    
+    -- Add corner to input
+    local corner = ModernUI:CreateCorner(inputFrame)
+    
+    -- Add stroke (border)
+    local stroke = ModernUI:CreateStroke(inputFrame, ModernUI.Config.Theme.Accent, 1.5, 0.5)
+    
+    -- Create text box
+    local textBox = Instance.new("TextBox")
+    textBox.Name = "TextBox"
+    textBox.Size = UDim2.new(1, -20, 1, 0)
+    textBox.Position = UDim2.new(0, 10, 0, 0)
+    textBox.BackgroundTransparency = 1
+    textBox.Text = ""
+    textBox.PlaceholderText = placeholder
+    textBox.PlaceholderColor3 = ModernUI.Config.Theme.TextDark
+    textBox.TextColor3 = ModernUI.Config.Theme.Text
+    textBox.Font = ModernUI.Config.Font
+    textBox.TextSize = 16
+    textBox.TextXAlignment = Enum.TextXAlignment.Left
+    textBox.ClearTextOnFocus = false
+    textBox.ClipsDescendants = true
+    textBox.ZIndex = 2
+    textBox.Parent = inputFrame
+    
+    -- Create input icon (optional)
+    local icon = Instance.new("ImageLabel")
+    icon.Name = "Icon"
+    icon.Size = UDim2.new(0, 20, 0, 20)
+    icon.Position = UDim2.new(1, -25, 0.5, 0)
+    icon.AnchorPoint = Vector2.new(0.5, 0.5)
+    icon.BackgroundTransparency = 1
+    icon.Image = ""
+    icon.ImageColor3 = ModernUI.Config.Theme.TextDark
+    icon.ImageTransparency = 0
+    icon.ZIndex = 3
+    icon.Visible = false
+    icon.Parent = inputFrame
+    
+    -- TextInput object with properties and methods
+    local textInput = {
+        Instance = inputFrame,
+        TextBox = textBox,
+        Icon = icon,
+        Corner = corner,
+        Stroke = stroke,
+        Focused = false,
+        Enabled = true,
+        HasIcon = false,
+        Callbacks = {
+            Changed = {},
+            Focused = {},
+            FocusLost = {},
+            Validated = {}
+        },
+        Validator = nil,
+        ValidationPattern = nil,
+        IsValid = true
+    }
+    setmetatable(textInput, TextInput)
+    
+    -- Set up events
+    textBox.Focused:Connect(function()
+        textInput:OnFocused()
+    end)
+    
+    textBox.FocusLost:Connect(function(enterPressed, inputObject)
+        textInput:OnFocusLost(enterPressed, inputObject)
+    end)
+    
+    textBox.Changed:Connect(function(property)
+        if property == "Text" then
+            textInput:OnTextChanged()
+        end
+    end)
+    
+    return textInput
+end
+
+-- TextInput animations and effects
+function TextInput:OnFocused()
+    self.Focused = true
+    
+    if not self.Enabled then
+        self.TextBox:ReleaseFocus()
+        return 
+    end
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Focus animation
+    ModernUI:Tween(self.Instance, {
+        BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.1)
+    }, ModernUI.Config.Animation.HoverTweenInfo)
+    
+    ModernUI:Tween(self.Stroke, {
+        Color = ModernUI.Config.Theme.Accent,
+        Transparency = 0
+    }, ModernUI.Config.Animation.HoverTweenInfo)
+    
+    -- Call registered focus callbacks
+    for _, callback in ipairs(self.Callbacks.Focused) do
+        task.spawn(function()
+            callback(self.TextBox.Text)
+        end)
+    end
+end
+
+function TextInput:OnFocusLost(enterPressed, inputObject)
+    self.Focused = false
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Reset to normal state
+    ModernUI:Tween(self.Instance, {
+        BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    }, ModernUI.Config.Animation.HoverTweenInfo)
+    
+    ModernUI:Tween(self.Stroke, {
+        Color = self.IsValid and ModernUI.Config.Theme.Accent or ModernUI.Config.Theme.Error,
+        Transparency = 0.5
+    }, ModernUI.Config.Animation.HoverTweenInfo)
+    
+    -- Validate the input
+    self:Validate()
+    
+    -- Call registered focus lost callbacks
+    for _, callback in ipairs(self.Callbacks.FocusLost) do
+        task.spawn(function()
+            callback(self.TextBox.Text, enterPressed)
+        end)
+    end
+end
+
+function TextInput:OnTextChanged()
+    -- Call registered change callbacks
+    for _, callback in ipairs(self.Callbacks.Changed) do
+        task.spawn(function()
+            callback(self.TextBox.Text)
+        end)
+    end
+    
+    -- Validate if not focused (live validation)
+    if not self.Focused then
+        self:Validate()
+    end
+end
+
+-- Validate the input based on validators
+function TextInput:Validate()
+    local ModernUI = require(script.Parent.ModernUI)
+    local text = self.TextBox.Text
+    local isValid = true
+    local validationMessage = ""
+    
+    -- Check if empty and required
+    if self.Required and text == "" then
+        isValid = false
+        validationMessage = "This field is required"
+    
+    -- Check pattern validation
+    elseif self.ValidationPattern and not string.match(text, self.ValidationPattern) then
+        isValid = false
+        validationMessage = self.ValidationMessage or "Invalid format"
+    
+    -- Check custom validator
+    elseif self.Validator then
+        local success, message = self.Validator(text)
+        if not success then
+            isValid = false
+            validationMessage = message or "Invalid input"
+        end
+    end
+    
+    -- Update UI based on validation
+    if isValid then
+        ModernUI:Tween(self.Stroke, {
+            Color = ModernUI.Config.Theme.Accent
+        })
+        
+        if self.HasIcon and self.Icon.Image ~= "" then
+            self.Icon.ImageColor3 = ModernUI.Config.Theme.Success
+            self.Icon.Visible = true
+        end
+    else
+        ModernUI:Tween(self.Stroke, {
+            Color = ModernUI.Config.Theme.Error
+        })
+        
+        if self.HasIcon and self.Icon.Image ~= "" then
+            self.Icon.ImageColor3 = ModernUI.Config.Theme.Error
+            self.Icon.Visible = true
+        end
+    end
+    
+    -- Store validation state
+    self.IsValid = isValid
+    self.ValidationMessage = validationMessage
+    
+    -- Call validation callbacks
+    for _, callback in ipairs(self.Callbacks.Validated) do
+        task.spawn(function()
+            callback(isValid, validationMessage)
+        end)
+    end
+    
+    return isValid
+end
+
+-- Register events
+function TextInput:OnChanged(callback)
+    table.insert(self.Callbacks.Changed, callback)
+    return self
+end
+
+function TextInput:OnFocused(callback)
+    table.insert(self.Callbacks.Focused, callback)
+    return self
+end
+
+function TextInput:OnFocusLost(callback)
+    table.insert(self.Callbacks.FocusLost, callback)
+    return self
+end
+
+function TextInput:OnValidated(callback)
+    table.insert(self.Callbacks.Validated, callback)
+    return self
+end
+
+-- Set the text of the input
+function TextInput:SetText(text)
+    self.TextBox.Text = text
+    return self
+end
+
+-- Get the text of the input
+function TextInput:GetText()
+    return self.TextBox.Text
+end
+
+-- Set if the field is required
+function TextInput:SetRequired(required)
+    self.Required = required
+    return self
+end
+
+-- Set a validation pattern (Lua pattern)
+function TextInput:SetPattern(pattern, message)
+    self.ValidationPattern = pattern
+    self.ValidationMessage = message
+    return self
+end
+
+-- Set a custom validator function
+function TextInput:SetValidator(validator)
+    self.Validator = validator
+    return self
+end
+
+-- Set the enabled state of the input
+function TextInput:SetEnabled(enabled)
+    self.Enabled = enabled
+    self.TextBox.TextEditable = enabled
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    if enabled then
+        ModernUI:Tween(self.Instance, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary
+        })
+        ModernUI:Tween(self.TextBox, {
+            TextColor3 = ModernUI.Config.Theme.Text,
+            PlaceholderColor3 = ModernUI.Config.Theme.TextDark
+        })
+    else
+        ModernUI:Tween(self.Instance, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(Color3.new(0, 0, 0), 0.5)
+        })
+        ModernUI:Tween(self.TextBox, {
+            TextColor3 = ModernUI.Config.Theme.TextDark,
+            PlaceholderColor3 = ModernUI.Config.Theme.TextDark:Lerp(Color3.new(0, 0, 0), 0.5)
+        })
+    end
+    
+    return self
+end
+
+-- Set the icon for the input
+function TextInput:SetIcon(iconId)
+    if iconId and iconId ~= "" then
+        self.Icon.Image = iconId
+        self.Icon.Visible = true
+        self.HasIcon = true
+        
+        -- Adjust text box size
+        self.TextBox.Size = UDim2.new(1, -40, 1, 0)
+    else
+        self.Icon.Image = ""
+        self.Icon.Visible = false
+        self.HasIcon = false
+        
+        -- Reset text box size
+        self.TextBox.Size = UDim2.new(1, -20, 1, 0)
+    end
+    
+    return self
+end
+
+-- Set placeholder text
+function TextInput:SetPlaceholder(text)
+    self.TextBox.PlaceholderText = text
+    return self
+end
+
+-- Set custom colors
+function TextInput:SetColors(backgroundColor, textColor, placeholderColor, accentColor)
+    if backgroundColor then
+        self.Instance.BackgroundColor3 = backgroundColor
+    end
+    
+    if textColor then
+        self.TextBox.TextColor3 = textColor
+    end
+    
+    if placeholderColor then
+        self.TextBox.PlaceholderColor3 = placeholderColor
+    end
+    
+    if accentColor then
+        self.Stroke.Color = accentColor
+    end
+    
+    return self
+end
+
+-- Set the size of the input
+function TextInput:SetSize(size)
+    self.Instance.Size = size
+    return self
+end
+
+-- Set the position of the input
+function TextInput:SetPosition(position)
+    self.Instance.Position = position
+    return self
+end
+
+-- Set the anchor point of the input
+function TextInput:SetAnchorPoint(anchorPoint)
+    self.Instance.AnchorPoint = anchorPoint
+    return self
+end
+
+-- Return the module
+return TextInput 

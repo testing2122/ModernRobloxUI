@@ -1,0 +1,161 @@
+-- Simple Example of ModernUI library
+-- This is a minimal example showing basic functionalities
+
+-- Load the required modules
+local ModernUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/ModernUI.txt"))()
+local Button = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Button.txt"))()
+local TextInput = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/TextInput.txt"))()
+local Toggle = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Toggle.txt"))()
+local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Notification.txt"))()
+
+-- Create the main UI window
+local mainUI = ModernUI:Create("Simple Example", UDim2.new(0, 400, 0, 300))
+
+-- Add a tab
+local mainTab = mainUI:AddTab("Main")
+
+-- Create a title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 40)
+title.Position = UDim2.new(0, 10, 0, 10)
+title.BackgroundTransparency = 1
+title.Text = "Modern UI Example"
+title.TextColor3 = ModernUI.Config.Theme.Text
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.Parent = mainTab.Content
+
+-- Create a button
+local exampleButton = Button.new(
+    mainTab.Content,
+    "Click Me!",
+    UDim2.new(0, 200, 0, 40),
+    UDim2.new(0.5, 0, 0, 70)
+)
+
+-- Add a click handler to the button
+exampleButton:OnClick(function()
+    Notification.success("Button Clicked", "You clicked the button!", 3)
+end)
+
+-- Create a text input
+local exampleInput = TextInput.new(
+    mainTab.Content,
+    "Enter your name",
+    UDim2.new(0, 200, 0, 40),
+    UDim2.new(0.5, 0, 0, 130)
+)
+
+-- Create a toggle
+local exampleToggle = Toggle.new(
+    mainTab.Content,
+    "Enable Feature",
+    UDim2.new(0, 200, 0, 40),
+    UDim2.new(0.5, 0, 0, 190)
+)
+
+-- Add a change handler to the toggle
+exampleToggle:OnChanged(function(value)
+    local status = value and "enabled" or "disabled"
+    Notification.info("Toggle Changed", "Feature is now " .. status, 3)
+end)
+
+-- Add a settings tab
+local settingsTab = mainUI:AddTab("Settings")
+
+-- Create theme options in settings tab
+local themeTitle = Instance.new("TextLabel")
+themeTitle.Size = UDim2.new(1, -20, 0, 30)
+themeTitle.Position = UDim2.new(0, 10, 0, 10)
+themeTitle.BackgroundTransparency = 1
+themeTitle.Text = "Theme Settings"
+themeTitle.TextColor3 = ModernUI.Config.Theme.Text
+themeTitle.Font = Enum.Font.GothamBold
+themeTitle.TextSize = 18
+themeTitle.TextXAlignment = Enum.TextXAlignment.Left
+themeTitle.Parent = settingsTab.Content
+
+-- Create theme toggle buttons
+local darkThemeToggle = Toggle.new(
+    settingsTab.Content,
+    "Dark Theme",
+    UDim2.new(0, 200, 0, 40),
+    UDim2.new(0, 20, 0, 50)
+)
+
+local lightThemeToggle = Toggle.new(
+    settingsTab.Content,
+    "Light Theme",
+    UDim2.new(0, 200, 0, 40),
+    UDim2.new(0, 20, 0, 100)
+)
+
+-- Set dark theme as default
+darkThemeToggle:SetValue(true, true)
+
+-- Theme toggle handlers
+local function updateDarkTheme(value)
+    if value then
+        -- Only update light toggle if this isn't a silent update
+        if lightThemeToggle.Value then
+            lightThemeToggle:SetValue(false, true) -- Silent update to avoid loop
+        end
+        
+        -- Dark theme
+        ModernUI:SetTheme({
+            Primary = Color3.fromRGB(45, 50, 60),
+            Secondary = Color3.fromRGB(35, 40, 50),
+            Accent = Color3.fromRGB(65, 125, 225),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDark = Color3.fromRGB(180, 180, 180)
+        })
+        
+        Notification.info("Theme Changed", "Dark theme applied", 2)
+    elseif not lightThemeToggle.Value then
+        -- Ensure at least one theme is selected
+        darkThemeToggle:SetValue(true, true)
+    end
+end
+
+local function updateLightTheme(value)
+    if value then
+        -- Only update dark toggle if this isn't a silent update
+        if darkThemeToggle.Value then
+            darkThemeToggle:SetValue(false, true) -- Silent update to avoid loop
+        end
+        
+        -- Light theme
+        ModernUI:SetTheme({
+            Primary = Color3.fromRGB(240, 240, 245),
+            Secondary = Color3.fromRGB(230, 230, 235),
+            Accent = Color3.fromRGB(65, 125, 225),
+            Text = Color3.fromRGB(40, 40, 40),
+            TextDark = Color3.fromRGB(100, 100, 100)
+        })
+        
+        Notification.info("Theme Changed", "Light theme applied", 2)
+    elseif not darkThemeToggle.Value then
+        -- Ensure at least one theme is selected
+        lightThemeToggle:SetValue(true, true)
+    end
+end
+
+darkThemeToggle:OnChanged(updateDarkTheme)
+lightThemeToggle:OnChanged(updateLightTheme)
+
+-- Add a save button
+local saveButton = Button.new(
+    settingsTab.Content,
+    "Save Settings",
+    UDim2.new(0, 200, 0, 40),
+    UDim2.new(0.5, 0, 0, 160)
+)
+
+saveButton:OnClick(function()
+    Notification.success("Settings Saved", "Your settings have been saved", 3)
+end)
+
+-- Display a welcome notification
+task.delay(0.5, function()
+    Notification.info("Welcome", "Thank you for using the Modern UI Library!", 5)
+end) 

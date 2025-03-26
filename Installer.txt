@@ -1,0 +1,146 @@
+-- Modern UI Library Installer
+-- This script will download and install all UI components
+
+local function DownloadFile(url, name)
+    local success, content = pcall(function()
+        return game:HttpGet(url)
+    end)
+    
+    if not success then
+        warn("Failed to download " .. name .. ": " .. tostring(content))
+        return false
+    end
+    
+    -- Store in shared environment for reuse
+    if getgenv then
+        getgenv()[name] = content
+    else
+        _G[name] = content
+    end
+    
+    return true
+end
+
+local function LoadComponent(name)
+    local content = getgenv and getgenv()[name] or _G[name]
+    if content then
+        local success, result = pcall(function()
+            return loadstring(content)()
+        end)
+        
+        if success then
+            return result
+        else
+            warn("Failed to load " .. name .. ": " .. tostring(result))
+            return nil
+        end
+    end
+    return nil
+end
+
+-- Repository URL (change this to your actual repository URL)
+local repoUrl = "https://raw.githubusercontent.com/username/ModernRobloxUI/main/"
+
+-- UI components to download
+local components = {
+    ModernUI = "ModernUI.txt",
+    Button = "Button.txt",
+    TextInput = "TextInput.txt",
+    Toggle = "Toggle.txt",
+    Slider = "Slider.txt",
+    Dropdown = "Dropdown.txt",
+    Notification = "Notification.txt"
+}
+
+-- Function to download all components
+local function DownloadAllComponents()
+    local downloaded = {}
+    
+    for name, file in pairs(components) do
+        local url = repoUrl .. file
+        print("Downloading " .. name .. "...")
+        
+        if DownloadFile(url, name) then
+            downloaded[name] = true
+            print("Successfully downloaded " .. name)
+        else
+            print("Failed to download " .. name)
+        end
+    end
+    
+    return downloaded
+end
+
+-- Function to load all components
+local function LoadAllComponents(downloaded)
+    local loaded = {}
+    
+    for name in pairs(downloaded) do
+        print("Loading " .. name .. "...")
+        loaded[name] = LoadComponent(name)
+        
+        if loaded[name] then
+            print("Successfully loaded " .. name)
+        else
+            print("Failed to load " .. name)
+        end
+    end
+    
+    return loaded
+end
+
+-- Main installation function
+local function InstallModernUI()
+    print("Starting Modern UI Library installation...")
+    
+    -- Ensure HTTP requests are enabled
+    if not game:GetService("HttpService").HttpEnabled then
+        warn("HTTP requests are not enabled. This script requires HTTP requests to be enabled.")
+        return nil
+    end
+    
+    local downloaded = DownloadAllComponents()
+    local components = LoadAllComponents(downloaded)
+    
+    -- Check if all components were loaded successfully
+    local success = true
+    for name in pairs(downloaded) do
+        if not components[name] then
+            success = false
+            break
+        end
+    end
+    
+    if success then
+        print("Modern UI Library has been successfully installed!")
+        
+        -- Return a library object with all components
+        return {
+            ModernUI = components.ModernUI,
+            Button = components.Button,
+            TextInput = components.TextInput,
+            Toggle = components.Toggle,
+            Slider = components.Slider,
+            Dropdown = components.Dropdown,
+            Notification = components.Notification,
+            
+            -- Helper function to create simple UI
+            CreateUI = function(title, size)
+                local ui = components.ModernUI:Create(title, size or UDim2.new(0, 450, 0, 350))
+                
+                -- Display a welcome notification
+                task.delay(0.5, function()
+                    components.Notification.info("Welcome", "Modern UI Library loaded successfully!", 3)
+                end)
+                
+                return ui
+            end
+        }
+    else
+        warn("Failed to install Modern UI Library.")
+        return nil
+    end
+end
+
+-- Execute the installation
+return InstallModernUI() 

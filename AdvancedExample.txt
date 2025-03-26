@@ -1,0 +1,313 @@
+-- Advanced Example of ModernUI library
+-- This example showcases more advanced features and components
+
+-- Load the required modules
+local ModernUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/ModernUI.txt"))()
+local Button = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Button.txt"))()
+local TextInput = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/TextInput.txt"))()
+local Toggle = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Toggle.txt"))()
+local Slider = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Slider.txt"))()
+local Dropdown = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Dropdown.txt"))()
+local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Notification.txt"))()
+
+-- Create the main UI window
+local mainUI = ModernUI:Create("Advanced Example", UDim2.new(0, 500, 0, 400))
+
+-- Add tabs
+local homeTab = mainUI:AddTab("Home")
+local featuresTab = mainUI:AddTab("Features")
+local settingsTab = mainUI:AddTab("Settings")
+local creditsTab = mainUI:AddTab("Credits")
+
+-- HOME TAB --
+-- Create a title
+local homeTitle = Instance.new("TextLabel")
+homeTitle.Size = UDim2.new(1, -20, 0, 40)
+homeTitle.Position = UDim2.new(0, 10, 0, 10)
+homeTitle.BackgroundTransparency = 1
+homeTitle.Text = "Modern UI Library"
+homeTitle.TextColor3 = ModernUI.Config.Theme.Text
+homeTitle.Font = Enum.Font.GothamBold
+homeTitle.TextSize = 24
+homeTitle.Parent = homeTab.Content
+
+-- Create a description
+local homeDescription = Instance.new("TextLabel")
+homeDescription.Size = UDim2.new(1, -20, 0, 60)
+homeDescription.Position = UDim2.new(0, 10, 0, 60)
+homeDescription.BackgroundTransparency = 1
+homeDescription.Text = "This advanced example demonstrates the capabilities of the Modern UI Library, featuring animated components, customizable themes, and a clean design."
+homeDescription.TextColor3 = ModernUI.Config.Theme.TextDark
+homeDescription.Font = ModernUI.Config.Font
+homeDescription.TextSize = 16
+homeDescription.TextWrapped = true
+homeDescription.Parent = homeTab.Content
+
+-- Create action buttons
+local getStartedButton = Button.new(
+    homeTab.Content,
+    "Get Started",
+    UDim2.new(0, 200, 0, 40),
+    UDim2.new(0.5, 0, 0, 150)
+)
+
+getStartedButton:OnClick(function()
+    mainUI:SelectTab("Features")
+    Notification.info("Navigation", "Navigated to Features tab", 2)
+end)
+
+local docsButton = Button.new(
+    homeTab.Content,
+    "Documentation",
+    UDim2.new(0, 200, 0, 40),
+    UDim2.new(0.5, 0, 0, 200)
+)
+
+docsButton:OnClick(function()
+    Notification.info("Documentation", "The documentation would open in a web browser", 3)
+end)
+
+-- FEATURES TAB --
+-- Create form layout
+local nameInput = TextInput.new(
+    featuresTab.Content,
+    "Your Name",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 20)
+)
+nameInput:SetRequired(true)
+
+local emailInput = TextInput.new(
+    featuresTab.Content,
+    "Email Address",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 70)
+)
+emailInput:SetPattern("^[%w%.]+@[%w%.]+%.%w+$", "Please enter a valid email")
+
+local ageSlider = Slider.new(
+    featuresTab.Content,
+    "Age",
+    13, 99, 25,
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 120)
+)
+
+local countryDropdown = Dropdown.new(
+    featuresTab.Content,
+    "Select Country",
+    {
+        {Text = "United States", Value = "US"},
+        {Text = "United Kingdom", Value = "UK"},
+        {Text = "Canada", Value = "CA"},
+        {Text = "Australia", Value = "AU"},
+        {Text = "Germany", Value = "DE"},
+        {Text = "Japan", Value = "JP"},
+        {Text = "Brazil", Value = "BR"},
+        {Text = "South Korea", Value = "KR"}
+    },
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 180)
+)
+
+local notificationsToggle = Toggle.new(
+    featuresTab.Content,
+    "Enable Notifications",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 240)
+)
+notificationsToggle:SetValue(true)
+
+local submitButton = Button.new(
+    featuresTab.Content,
+    "Submit Form",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 300)
+)
+
+submitButton:OnClick(function()
+    -- Validate form
+    local valid = true
+    local errorMessages = {}
+    
+    if nameInput:GetText() == "" then
+        valid = false
+        table.insert(errorMessages, "Name is required")
+    end
+    
+    if not emailInput.IsValid then
+        valid = false
+        table.insert(errorMessages, "Email is invalid")
+    end
+    
+    if valid then
+        Notification.success("Form Submitted", "Thank you for submitting the form!", 3)
+    else
+        Notification.error("Validation Error", table.concat(errorMessages, "\n"), 5)
+    end
+end)
+
+-- SETTINGS TAB --
+-- Create appearance settings
+local appearanceTitle = Instance.new("TextLabel")
+appearanceTitle.Size = UDim2.new(1, -20, 0, 30)
+appearanceTitle.Position = UDim2.new(0, 10, 0, 10)
+appearanceTitle.BackgroundTransparency = 1
+appearanceTitle.Text = "Appearance"
+appearanceTitle.TextColor3 = ModernUI.Config.Theme.Text
+appearanceTitle.Font = Enum.Font.GothamBold
+appearanceTitle.TextSize = 18
+appearanceTitle.TextXAlignment = Enum.TextXAlignment.Left
+appearanceTitle.Parent = settingsTab.Content
+
+-- Theme options
+local themeDropdown = Dropdown.new(
+    settingsTab.Content,
+    "Select Theme",
+    {
+        {Text = "Dark", Value = "dark"},
+        {Text = "Light", Value = "light"},
+        {Text = "Blue", Value = "blue"},
+        {Text = "Red", Value = "red"},
+        {Text = "Green", Value = "green"}
+    },
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 50)
+)
+
+themeDropdown:SetValue("dark")
+themeDropdown:OnChanged(function(value)
+    if value == "dark" then
+        ModernUI:SetTheme({
+            Primary = Color3.fromRGB(45, 50, 60),
+            Secondary = Color3.fromRGB(35, 40, 50),
+            Accent = Color3.fromRGB(65, 125, 225),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDark = Color3.fromRGB(180, 180, 180)
+        })
+    elseif value == "light" then
+        ModernUI:SetTheme({
+            Primary = Color3.fromRGB(240, 240, 245),
+            Secondary = Color3.fromRGB(230, 230, 235),
+            Accent = Color3.fromRGB(65, 125, 225),
+            Text = Color3.fromRGB(40, 40, 40),
+            TextDark = Color3.fromRGB(100, 100, 100)
+        })
+    elseif value == "blue" then
+        ModernUI:SetTheme({
+            Primary = Color3.fromRGB(35, 45, 70),
+            Secondary = Color3.fromRGB(25, 35, 60),
+            Accent = Color3.fromRGB(65, 155, 255),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDark = Color3.fromRGB(180, 190, 210)
+        })
+    elseif value == "red" then
+        ModernUI:SetTheme({
+            Primary = Color3.fromRGB(70, 35, 35),
+            Secondary = Color3.fromRGB(60, 25, 25),
+            Accent = Color3.fromRGB(255, 80, 80),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDark = Color3.fromRGB(210, 180, 180)
+        })
+    elseif value == "green" then
+        ModernUI:SetTheme({
+            Primary = Color3.fromRGB(35, 70, 45),
+            Secondary = Color3.fromRGB(25, 60, 35),
+            Accent = Color3.fromRGB(80, 255, 120),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDark = Color3.fromRGB(180, 210, 190)
+        })
+    end
+    
+    Notification.info("Theme Changed", "Applied the " .. value .. " theme", 2)
+end)
+
+-- Font size slider
+local fontSizeSlider = Slider.new(
+    settingsTab.Content,
+    "Font Size",
+    12, 24, 16,
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 110)
+)
+fontSizeSlider:SetPrecision(0)
+
+-- Animation speed slider
+local animSpeedSlider = Slider.new(
+    settingsTab.Content,
+    "Animation Speed",
+    0.1, 2, 1,
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 170)
+)
+animSpeedSlider:SetPrecision(1)
+animSpeedSlider:SetValueSuffix("x")
+
+animSpeedSlider:OnChanged(function(value)
+    local tweenTime = 0.3 / value
+    ModernUI.Config.Animation.TweenInfo = TweenInfo.new(tweenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+    ModernUI.Config.Animation.HoverTweenInfo = TweenInfo.new(tweenTime * 0.66, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+end)
+
+-- Reset button
+local resetButton = Button.new(
+    settingsTab.Content,
+    "Reset to Defaults",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 230)
+)
+
+resetButton:OnClick(function()
+    themeDropdown:SetValue("dark")
+    fontSizeSlider:SetValue(16)
+    animSpeedSlider:SetValue(1)
+    Notification.success("Settings Reset", "All settings have been reset to default values", 3)
+end)
+
+-- CREDITS TAB --
+local creditsTitle = Instance.new("TextLabel")
+creditsTitle.Size = UDim2.new(1, -20, 0, 40)
+creditsTitle.Position = UDim2.new(0, 10, 0, 10)
+creditsTitle.BackgroundTransparency = 1
+creditsTitle.Text = "Credits"
+creditsTitle.TextColor3 = ModernUI.Config.Theme.Text
+creditsTitle.Font = Enum.Font.GothamBold
+creditsTitle.TextSize = 24
+creditsTitle.Parent = creditsTab.Content
+
+local creditsText = Instance.new("TextLabel")
+creditsText.Size = UDim2.new(1, -20, 0, 120)
+creditsText.Position = UDim2.new(0, 10, 0, 60)
+creditsText.BackgroundTransparency = 1
+creditsText.Text = "Modern UI Library\nCreated for Roblox exploit environments\n\nDesigned with sleek animations and a modern aesthetic.\nSupports themes, responsive layouts, and customizable components."
+creditsText.TextColor3 = ModernUI.Config.Theme.TextDark
+creditsText.Font = ModernUI.Config.Font
+creditsText.TextSize = 16
+creditsText.TextWrapped = true
+creditsText.Parent = creditsTab.Content
+
+-- Test notification buttons
+local testButtons = {
+    {type = "info", text = "Info Notification"},
+    {type = "success", text = "Success Notification"},
+    {type = "warning", text = "Warning Notification"},
+    {type = "error", text = "Error Notification"}
+}
+
+for i, btnData in ipairs(testButtons) do
+    local notifButton = Button.new(
+        creditsTab.Content,
+        btnData.text,
+        UDim2.new(0, 200, 0, 35),
+        UDim2.new(0.5, 0, 0, 190 + (i-1) * 45)
+    )
+    
+    notifButton:OnClick(function()
+        Notification[btnData.type](btnData.text, "This is an example of a " .. btnData.type .. " notification.", 3)
+    end)
+end
+
+-- Display a welcome notification
+task.delay(0.5, function()
+    Notification.success("Welcome", "Thank you for using the Modern UI Library Advanced Example!", 5)
+end)

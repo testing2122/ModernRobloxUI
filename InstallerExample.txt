@@ -1,0 +1,154 @@
+-- Installer Example for Modern UI Library
+-- This example shows how to use the installer script for quick setup
+
+-- Load the installer (replace with your actual URL)
+local ModernUILib = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/ModernRobloxUI/main/Installer.txt"))()
+
+-- Check if the library was loaded successfully
+if not ModernUILib then
+    warn("Failed to load Modern UI Library!")
+    return
+end
+
+-- Extract the components for easier access
+local ModernUI = ModernUILib.ModernUI
+local Button = ModernUILib.Button
+local TextInput = ModernUILib.TextInput
+local Toggle = ModernUILib.Toggle
+local Slider = ModernUILib.Slider
+local Dropdown = ModernUILib.Dropdown
+local Notification = ModernUILib.Notification
+
+-- Quick creation method
+local ui = ModernUILib.CreateUI("Quick Example")
+
+-- Add a tab
+local mainTab = ui:AddTab("Main")
+
+-- Create a title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 40)
+title.Position = UDim2.new(0, 10, 0, 10)
+title.BackgroundTransparency = 1
+title.Text = "Installer Example"
+title.TextColor3 = ModernUI.Config.Theme.Text
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.Parent = mainTab.Content
+
+-- Add a description
+local description = Instance.new("TextLabel")
+description.Size = UDim2.new(1, -20, 0, 60)
+description.Position = UDim2.new(0, 10, 0, 60)
+description.BackgroundTransparency = 1
+description.Text = "This example demonstrates how to use the installer script to quickly set up the UI library."
+description.TextColor3 = ModernUI.Config.Theme.TextDark
+description.Font = ModernUI.Config.Font
+description.TextSize = 16
+description.TextWrapped = true
+description.Parent = mainTab.Content
+
+-- Add a slider
+local mySlider = Slider.new(
+    mainTab.Content,
+    "Value",
+    0, 100, 50,
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 140)
+)
+
+mySlider:SetValueSuffix("%")
+
+-- Add a dropdown
+local myDropdown = Dropdown.new(
+    mainTab.Content,
+    "Select an option",
+    {
+        {Text = "Option A", Value = "A"},
+        {Text = "Option B", Value = "B"},
+        {Text = "Option C", Value = "C"}
+    },
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 200)
+)
+
+-- Add a button
+local myButton = Button.new(
+    mainTab.Content,
+    "Click Me",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 260)
+)
+
+-- Connect events
+mySlider:OnChanged(function(value)
+    Notification.info("Slider Changed", "Value: " .. value .. "%", 2)
+end)
+
+myDropdown:OnChanged(function(value, text)
+    Notification.success("Selected Option", text .. " (" .. value .. ")", 2)
+end)
+
+myButton:OnClick(function()
+    Notification.warning("Button Clicked", "You clicked the button!", 2)
+end)
+
+-- Add a second tab
+local settingsTab = ui:AddTab("Settings")
+
+-- Add content to settings tab
+local settingsTitle = Instance.new("TextLabel")
+settingsTitle.Size = UDim2.new(1, -20, 0, 30)
+settingsTitle.Position = UDim2.new(0, 10, 0, 10)
+settingsTitle.BackgroundTransparency = 1
+settingsTitle.Text = "Settings"
+settingsTitle.TextColor3 = ModernUI.Config.Theme.Text
+settingsTitle.Font = Enum.Font.GothamBold
+settingsTitle.TextSize = 18
+settingsTitle.TextXAlignment = Enum.TextXAlignment.Left
+settingsTitle.Parent = settingsTab.Content
+
+-- Create a toggle
+local myToggle = Toggle.new(
+    settingsTab.Content,
+    "Enable Feature",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 50)
+)
+
+myToggle:OnChanged(function(value)
+    local status = value and "enabled" or "disabled"
+    Notification.info("Toggle Changed", "Feature is now " .. status, 2)
+end)
+
+-- Create a user input field
+local myInput = TextInput.new(
+    settingsTab.Content,
+    "Enter Your Name",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 100)
+)
+
+myInput:SetRequired(true)
+
+-- Add a save button
+local saveButton = Button.new(
+    settingsTab.Content,
+    "Save Settings",
+    UDim2.new(0, 300, 0, 40),
+    UDim2.new(0.5, 0, 0, 160)
+)
+
+saveButton:OnClick(function()
+    local name = myInput:GetText()
+    
+    if name == "" then
+        Notification.error("Validation Error", "Name is required", 3)
+    else
+        Notification.success("Settings Saved", "Hello, " .. name .. "!", 3)
+    end
+end)
+
+-- Display info about installer
+print("Modern UI Library has been successfully loaded via the installer!")
+print("Available modules: ModernUI, Button, TextInput, Toggle, Slider, Dropdown, Notification") 

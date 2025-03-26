@@ -1,0 +1,402 @@
+-- Slider Component for ModernUI
+-- This file contains the implementation of customizable sliders with animations
+
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local Slider = {}
+Slider.__index = Slider
+
+-- Create a new slider
+function Slider.new(parent, text, min, max, default, size, position)
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Default properties
+    local sliderSize = size or UDim2.new(0, 200, 0, 50)
+    local sliderPosition = position or UDim2.new(0.5, 0, 0, 0)
+    local minValue = min or 0
+    local maxValue = max or 100
+    local defaultValue = default or minValue
+    
+    -- Clamp default value to range
+    defaultValue = math.clamp(defaultValue, minValue, maxValue)
+    
+    -- Create the slider container
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = "SliderFrame_" .. text:gsub("%s+", "_")
+    sliderFrame.Size = sliderSize
+    sliderFrame.Position = sliderPosition
+    sliderFrame.AnchorPoint = Vector2.new(0.5, 0)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Parent = parent
+    
+    -- Create slider text label
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "Label"
+    textLabel.Size = UDim2.new(1, -60, 0, 20)
+    textLabel.Position = UDim2.new(0, 0, 0, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = text
+    textLabel.TextColor3 = ModernUI.Config.Theme.Text
+    textLabel.Font = ModernUI.Config.Font
+    textLabel.TextSize = 16
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.Parent = sliderFrame
+    
+    -- Create value label
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Name = "Value"
+    valueLabel.Size = UDim2.new(0, 50, 0, 20)
+    valueLabel.Position = UDim2.new(1, -50, 0, 0)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Text = tostring(defaultValue)
+    valueLabel.TextColor3 = ModernUI.Config.Theme.Accent
+    valueLabel.Font = ModernUI.Config.Font
+    valueLabel.TextSize = 16
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.Parent = sliderFrame
+    
+    -- Create slider track
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.Name = "Track"
+    sliderTrack.Size = UDim2.new(1, 0, 0, 6)
+    sliderTrack.Position = UDim2.new(0, 0, 0, 30)
+    sliderTrack.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    sliderTrack.Parent = sliderFrame
+    
+    -- Add corner to slider track
+    local trackCorner = ModernUI:CreateCorner(sliderTrack, UDim.new(1, 0))
+    
+    -- Create slider fill
+    local sliderFill = Instance.new("Frame")
+    sliderFill.Name = "Fill"
+    sliderFill.Size = UDim2.new(0, 0, 1, 0)
+    sliderFill.BackgroundColor3 = ModernUI.Config.Theme.Accent
+    sliderFill.Parent = sliderTrack
+    
+    -- Add corner to slider fill
+    local fillCorner = ModernUI:CreateCorner(sliderFill, UDim.new(1, 0))
+    
+    -- Create slider knob
+    local sliderKnob = Instance.new("Frame")
+    sliderKnob.Name = "Knob"
+    sliderKnob.Size = UDim2.new(0, 16, 0, 16)
+    sliderKnob.Position = UDim2.new(0, 0, 0.5, 0)
+    sliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+    sliderKnob.BackgroundColor3 = ModernUI.Config.Theme.Accent
+    sliderKnob.Parent = sliderFill
+    
+    -- Add corner to slider knob
+    local knobCorner = ModernUI:CreateCorner(sliderKnob, UDim.new(1, 0))
+    
+    -- Create shadow for knob
+    local knobStroke = ModernUI:CreateStroke(sliderKnob, Color3.new(1, 1, 1), 1, 0.2)
+    
+    -- Add hit detection for the entire slider
+    local sliderHitbox = Instance.new("TextButton")
+    sliderHitbox.Name = "Hitbox"
+    sliderHitbox.Size = UDim2.new(1, 0, 0, 30)
+    sliderHitbox.Position = UDim2.new(0, 0, 0, 15)
+    sliderHitbox.BackgroundTransparency = 1
+    sliderHitbox.Text = ""
+    sliderHitbox.Parent = sliderFrame
+    
+    -- Slider object with properties and methods
+    local slider = {
+        Instance = sliderFrame,
+        Label = textLabel,
+        ValueLabel = valueLabel,
+        Track = sliderTrack,
+        Fill = sliderFill,
+        Knob = sliderKnob,
+        Hitbox = sliderHitbox,
+        Value = defaultValue,
+        Min = minValue,
+        Max = maxValue,
+        Dragging = false,
+        Enabled = true,
+        Precision = 0,
+        ValueSuffix = "",
+        Callbacks = {}
+    }
+    setmetatable(slider, Slider)
+    
+    -- Initialize slider position
+    slider:SetValue(defaultValue, true)
+    
+    -- Set up events
+    sliderHitbox.MouseButton1Down:Connect(function()
+        if slider.Enabled then
+            slider:StartDragging()
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            if slider.Dragging then
+                slider:StopDragging()
+            end
+        end
+    end)
+    
+    -- Hover effect
+    sliderHitbox.MouseEnter:Connect(function()
+        if slider.Enabled then
+            ModernUI:Tween(sliderKnob, {Size = UDim2.new(0, 18, 0, 18)}, ModernUI.Config.Animation.HoverTweenInfo)
+            ModernUI:Tween(knobStroke, {Transparency = 0}, ModernUI.Config.Animation.HoverTweenInfo)
+        end
+    end)
+    
+    sliderHitbox.MouseLeave:Connect(function()
+        if slider.Enabled and not slider.Dragging then
+            ModernUI:Tween(sliderKnob, {Size = UDim2.new(0, 16, 0, 16)}, ModernUI.Config.Animation.HoverTweenInfo)
+            ModernUI:Tween(knobStroke, {Transparency = 0.2}, ModernUI.Config.Animation.HoverTweenInfo)
+        end
+    end)
+    
+    return slider
+end
+
+-- Start dragging the slider
+function Slider:StartDragging()
+    if not self.Enabled then return end
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    self.Dragging = true
+    
+    -- Make knob larger when dragging
+    ModernUI:Tween(self.Knob, {Size = UDim2.new(0, 20, 0, 20)}, TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    
+    -- Update on mouse movement
+    local moveConnection
+    moveConnection = UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            self:UpdateValue()
+        end
+    end)
+    
+    -- Update value initially
+    self:UpdateValue()
+    
+    -- Clean up when dragging stops
+    local dragEndConnection
+    dragEndConnection = UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            moveConnection:Disconnect()
+            dragEndConnection:Disconnect()
+        end
+    end)
+end
+
+-- Stop dragging the slider
+function Slider:StopDragging()
+    if not self.Enabled then return end
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    self.Dragging = false
+    
+    -- Return knob to normal size
+    ModernUI:Tween(self.Knob, {Size = UDim2.new(0, 16, 0, 16)}, TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+end
+
+-- Update the slider value based on mouse position
+function Slider:UpdateValue()
+    if not self.Enabled or not self.Dragging then return end
+    
+    local mouse = game:GetService("Players").LocalPlayer:GetMouse()
+    local trackPosition = self.Track.AbsolutePosition.X
+    local trackWidth = self.Track.AbsoluteSize.X
+    local mousePosition = mouse.X
+    
+    -- Calculate the normalized value (0-1)
+    local normalizedValue = math.clamp((mousePosition - trackPosition) / trackWidth, 0, 1)
+    
+    -- Calculate the actual value based on min/max
+    local value = self.Min + (normalizedValue * (self.Max - self.Min))
+    
+    -- Apply precision
+    if self.Precision > 0 then
+        local multiplier = 10 ^ self.Precision
+        value = math.floor(value * multiplier + 0.5) / multiplier
+    else
+        value = math.floor(value + 0.5)
+    end
+    
+    -- Set the value
+    self:SetValue(value)
+end
+
+-- Set the slider value
+function Slider:SetValue(value, silentMode)
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Clamp the value to the range
+    value = math.clamp(value, self.Min, self.Max)
+    
+    -- Store the value
+    self.Value = value
+    
+    -- Update the visual display
+    local normalizedValue = (value - self.Min) / (self.Max - self.Min)
+    
+    -- Update fill and knob position
+    self.Fill.Size = UDim2.new(normalizedValue, 0, 1, 0)
+    self.Knob.Position = UDim2.new(1, 0, 0.5, 0)
+    
+    -- Update the value label
+    local displayValue = value
+    if self.Precision > 0 then
+        local formatString = "%." .. self.Precision .. "f"
+        displayValue = string.format(formatString, value)
+    else
+        displayValue = tostring(math.floor(value))
+    end
+    
+    self.ValueLabel.Text = displayValue .. self.ValueSuffix
+    
+    -- Call registered callbacks if not in silent mode
+    if not silentMode then
+        for _, callback in ipairs(self.Callbacks) do
+            task.spawn(function()
+                callback(value)
+            end)
+        end
+    end
+    
+    return self
+end
+
+-- Register a callback function for when the slider value changes
+function Slider:OnChanged(callback)
+    table.insert(self.Callbacks, callback)
+    return self
+end
+
+-- Set the text of the slider
+function Slider:SetText(text)
+    self.Label.Text = text
+    return self
+end
+
+-- Set the precision of the value display (number of decimal places)
+function Slider:SetPrecision(precision)
+    self.Precision = precision
+    self:SetValue(self.Value, true) -- Update display with new precision
+    return self
+end
+
+-- Set a suffix for the value display (e.g., "%", "ms", etc.)
+function Slider:SetValueSuffix(suffix)
+    self.ValueSuffix = suffix
+    self:SetValue(self.Value, true) -- Update display with new suffix
+    return self
+end
+
+-- Set the enabled state of the slider
+function Slider:SetEnabled(enabled)
+    self.Enabled = enabled
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    if enabled then
+        ModernUI:Tween(self.Label, {
+            TextColor3 = ModernUI.Config.Theme.Text,
+            TextTransparency = 0
+        })
+        ModernUI:Tween(self.ValueLabel, {
+            TextColor3 = ModernUI.Config.Theme.Accent,
+            TextTransparency = 0
+        })
+        ModernUI:Tween(self.Fill, {
+            BackgroundColor3 = ModernUI.Config.Theme.Accent
+        })
+        ModernUI:Tween(self.Knob, {
+            BackgroundColor3 = ModernUI.Config.Theme.Accent
+        })
+        ModernUI:Tween(self.Track, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary
+        })
+    else
+        ModernUI:Tween(self.Label, {
+            TextColor3 = ModernUI.Config.Theme.TextDark,
+            TextTransparency = 0.3
+        })
+        ModernUI:Tween(self.ValueLabel, {
+            TextColor3 = ModernUI.Config.Theme.TextDark,
+            TextTransparency = 0.3
+        })
+        ModernUI:Tween(self.Fill, {
+            BackgroundColor3 = ModernUI.Config.Theme.Accent:Lerp(Color3.new(0, 0, 0), 0.5)
+        })
+        ModernUI:Tween(self.Knob, {
+            BackgroundColor3 = ModernUI.Config.Theme.Accent:Lerp(Color3.new(0, 0, 0), 0.5)
+        })
+        ModernUI:Tween(self.Track, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(Color3.new(0, 0, 0), 0.2)
+        })
+    end
+    
+    return self
+end
+
+-- Set custom colors
+function Slider:SetColors(labelColor, valueColor, trackColor, fillColor, knobColor)
+    if labelColor then
+        self.Label.TextColor3 = labelColor
+    end
+    
+    if valueColor then
+        self.ValueLabel.TextColor3 = valueColor
+    end
+    
+    if trackColor then
+        self.Track.BackgroundColor3 = trackColor
+    end
+    
+    if fillColor then
+        self.Fill.BackgroundColor3 = fillColor
+    end
+    
+    if knobColor then
+        self.Knob.BackgroundColor3 = knobColor
+    end
+    
+    return self
+end
+
+-- Set the minimum and maximum values
+function Slider:SetRange(min, max)
+    -- Ensure max > min
+    if max <= min then
+        max = min + 1
+    end
+    
+    self.Min = min
+    self.Max = max
+    
+    -- Update current value to ensure it's still in range
+    self:SetValue(self.Value, true)
+    
+    return self
+end
+
+-- Set the size of the slider
+function Slider:SetSize(size)
+    self.Instance.Size = size
+    return self
+end
+
+-- Set the position of the slider
+function Slider:SetPosition(position)
+    self.Instance.Position = position
+    return self
+end
+
+-- Set the anchor point of the slider
+function Slider:SetAnchorPoint(anchorPoint)
+    self.Instance.AnchorPoint = anchorPoint
+    return self
+end
+
+-- Return the module
+return Slider 

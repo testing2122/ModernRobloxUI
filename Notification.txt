@@ -1,0 +1,379 @@
+-- Notification Component for ModernUI
+-- This file contains the implementation of notifications with animations
+
+local TweenService = game:GetService("TweenService")
+
+local Notification = {}
+Notification.__index = Notification
+
+-- Notification types with their respective colors
+local NOTIFICATION_TYPES = {
+    INFO = {
+        Color = Color3.fromRGB(65, 125, 225),
+        Icon = "rbxassetid://11401835376" -- Info icon
+    },
+    SUCCESS = {
+        Color = Color3.fromRGB(65, 225, 95),
+        Icon = "rbxassetid://11401835376" -- Check icon
+    },
+    WARNING = {
+        Color = Color3.fromRGB(225, 180, 65),
+        Icon = "rbxassetid://11401835376" -- Warning icon
+    },
+    ERROR = {
+        Color = Color3.fromRGB(225, 65, 65),
+        Icon = "rbxassetid://11401835376" -- Error icon
+    },
+    CUSTOM = {
+        Color = Color3.fromRGB(65, 125, 225),
+        Icon = ""
+    }
+}
+
+-- Active notifications
+local ActiveNotifications = {}
+
+-- Create a notification
+function Notification.new(title, message, notificationType, duration, parent)
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Default properties
+    notificationType = notificationType or "INFO"
+    duration = duration or 3
+    
+    -- Get notification type configuration
+    local typeConfig = NOTIFICATION_TYPES[string.upper(notificationType)] or NOTIFICATION_TYPES.INFO
+    
+    -- Find an existing ScreenGui or create one
+    local notificationGui
+    if parent then
+        notificationGui = parent
+    else
+        notificationGui = game:GetService("CoreGui"):FindFirstChild("ModernUI_Notifications")
+        
+        if not notificationGui then
+            notificationGui = Instance.new("ScreenGui")
+            notificationGui.Name = "ModernUI_Notifications"
+            notificationGui.ResetOnSpawn = false
+            notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+            notificationGui.IgnoreGuiInset = true
+            
+            -- Apply protection if in exploit environment
+            if syn and syn.protect_gui then
+                syn.protect_gui(notificationGui)
+                notificationGui.Parent = game:GetService("CoreGui")
+            elseif gethui then
+                notificationGui.Parent = gethui()
+            elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
+                notificationGui.Parent = game:GetService("CoreGui").RobloxGui
+            else
+                notificationGui.Parent = game:GetService("CoreGui")
+            end
+            
+            -- Create container for notifications
+            local container = Instance.new("Frame")
+            container.Name = "NotificationContainer"
+            container.Size = UDim2.new(0, 300, 1, 0)
+            container.Position = UDim2.new(1, -310, 0, 10)
+            container.BackgroundTransparency = 1
+            container.Parent = notificationGui
+            
+            -- Auto layout
+            local listLayout = Instance.new("UIListLayout")
+            listLayout.Padding = UDim.new(0, 10)
+            listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            listLayout.Parent = container
+        end
+    end
+    
+    -- Get notification container
+    local container = notificationGui:FindFirstChild("NotificationContainer")
+    
+    -- Create notification frame
+    local notificationFrame = Instance.new("Frame")
+    notificationFrame.Name = "Notification_" .. title:gsub("%s+", "_")
+    notificationFrame.Size = UDim2.new(1, -20, 0, 0) -- Start with 0 height for animation
+    notificationFrame.AutomaticSize = Enum.AutomaticSize.Y
+    notificationFrame.BackgroundColor3 = ModernUI.Config.Theme.Primary
+    notificationFrame.BackgroundTransparency = 0.1
+    notificationFrame.Parent = container
+    
+    -- Add corner to notification frame
+    local corner = ModernUI:CreateCorner(notificationFrame)
+    
+    -- Add stroke to notification frame
+    local stroke = ModernUI:CreateStroke(notificationFrame, typeConfig.Color, 1.5)
+    
+    -- Create color bar
+    local colorBar = Instance.new("Frame")
+    colorBar.Name = "ColorBar"
+    colorBar.Size = UDim2.new(0, 5, 1, 0)
+    colorBar.Position = UDim2.new(0, 0, 0, 0)
+    colorBar.BackgroundColor3 = typeConfig.Color
+    colorBar.Parent = notificationFrame
+    
+    -- Add corner to color bar
+    local barCorner = ModernUI:CreateCorner(colorBar)
+    
+    -- Create title label
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "Title"
+    titleLabel.Size = UDim2.new(1, -50, 0, 30)
+    titleLabel.Position = UDim2.new(0, 40, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = ModernUI.Config.Theme.Text
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 16
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = notificationFrame
+    
+    -- Create message label
+    local messageLabel = Instance.new("TextLabel")
+    messageLabel.Name = "Message"
+    messageLabel.Size = UDim2.new(1, -50, 0, 0)
+    messageLabel.Position = UDim2.new(0, 40, 0, 30)
+    messageLabel.BackgroundTransparency = 1
+    messageLabel.Text = message
+    messageLabel.TextColor3 = ModernUI.Config.Theme.TextDark
+    messageLabel.Font = ModernUI.Config.Font
+    messageLabel.TextSize = 14
+    messageLabel.TextWrapped = true
+    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+    messageLabel.AutomaticSize = Enum.AutomaticSize.Y
+    messageLabel.Parent = notificationFrame
+    
+    -- Add padding to message
+    local messagePadding = ModernUI:CreatePadding(messageLabel, {Bottom = 10, Right = 10})
+    
+    -- Create icon
+    local icon = Instance.new("ImageLabel")
+    icon.Name = "Icon"
+    icon.Size = UDim2.new(0, 20, 0, 20)
+    icon.Position = UDim2.new(0, 15, 0, 15)
+    icon.BackgroundTransparency = 1
+    icon.Image = typeConfig.Icon
+    icon.ImageColor3 = typeConfig.Color
+    icon.Parent = notificationFrame
+    
+    -- Create close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Size = UDim2.new(0, 20, 0, 20)
+    closeButton.Position = UDim2.new(1, -25, 0, 5)
+    closeButton.BackgroundTransparency = 1
+    closeButton.Text = "×"
+    closeButton.TextColor3 = ModernUI.Config.Theme.TextDark
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.TextSize = 20
+    closeButton.Parent = notificationFrame
+    
+    -- Create progress bar for automatic dismissal
+    local progressBar = Instance.new("Frame")
+    progressBar.Name = "ProgressBar"
+    progressBar.Size = UDim2.new(1, 0, 0, 2)
+    progressBar.Position = UDim2.new(0, 0, 1, -2)
+    progressBar.BackgroundColor3 = typeConfig.Color
+    progressBar.BorderSizePixel = 0
+    progressBar.Parent = notificationFrame
+    
+    -- Notification object with properties and methods
+    local notification = {
+        Instance = notificationFrame,
+        Title = titleLabel,
+        Message = messageLabel,
+        Icon = icon,
+        CloseButton = closeButton,
+        ColorBar = colorBar,
+        ProgressBar = progressBar,
+        Stroke = stroke,
+        Duration = duration,
+        AutoClose = duration > 0,
+        Callbacks = {
+            Closed = {}
+        }
+    }
+    setmetatable(notification, Notification)
+    
+    -- Add to active notifications
+    table.insert(ActiveNotifications, notification)
+    
+    -- Set up close button
+    closeButton.MouseButton1Click:Connect(function()
+        notification:Close()
+    end)
+    
+    -- Set up hover effect for close button
+    closeButton.MouseEnter:Connect(function()
+        ModernUI:Tween(closeButton, {TextColor3 = ModernUI.Config.Theme.Text}, ModernUI.Config.Animation.HoverTweenInfo)
+    end)
+    
+    closeButton.MouseLeave:Connect(function()
+        ModernUI:Tween(closeButton, {TextColor3 = ModernUI.Config.Theme.TextDark}, ModernUI.Config.Animation.HoverTweenInfo)
+    end)
+    
+    -- Show notification with animation
+    notification:Show()
+    
+    -- Auto close if duration is set
+    if notification.AutoClose then
+        notification:StartAutoClose()
+    end
+    
+    return notification
+end
+
+-- Show notification with animation
+function Notification:Show()
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Create a nice entry animation
+    self.Instance.Size = UDim2.new(1, -20, 0, 0)
+    self.Instance.Position = UDim2.new(0, 10, 0, 0)
+    self.Instance.BackgroundTransparency = 1
+    self.ColorBar.BackgroundTransparency = 1
+    self.Title.TextTransparency = 1
+    self.Message.TextTransparency = 1
+    self.Icon.ImageTransparency = 1
+    self.CloseButton.TextTransparency = 1
+    self.Stroke.Transparency = 1
+    
+    -- First, increase the height
+    ModernUI:Tween(self.Instance, {
+        Size = UDim2.new(1, -20, 0, self.Title.AbsoluteSize.Y + self.Message.AbsoluteSize.Y + 20),
+        BackgroundTransparency = 0.1
+    }, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    
+    -- Then, fade in all elements
+    local function fadeInElements()
+        ModernUI:Tween(self.ColorBar, {BackgroundTransparency = 0}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+        ModernUI:Tween(self.Title, {TextTransparency = 0}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+        ModernUI:Tween(self.Message, {TextTransparency = 0}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+        ModernUI:Tween(self.Icon, {ImageTransparency = 0}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+        ModernUI:Tween(self.CloseButton, {TextTransparency = 0}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+        ModernUI:Tween(self.Stroke, {Transparency = 0}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    end
+    
+    task.delay(0.1, fadeInElements)
+end
+
+-- Start auto-close timer
+function Notification:StartAutoClose()
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Start progress bar animation
+    ModernUI:Tween(self.ProgressBar, {
+        Size = UDim2.new(0, 0, 0, 2)
+    }, TweenInfo.new(self.Duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out))
+    
+    -- Set up auto close timer
+    task.delay(self.Duration, function()
+        self:Close()
+    end)
+end
+
+-- Close notification with animation
+function Notification:Close()
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Create a nice exit animation
+    ModernUI:Tween(self.Instance, {
+        Position = UDim2.new(1, 0, 0, self.Instance.Position.Y.Offset),
+        BackgroundTransparency = 1
+    }, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    
+    ModernUI:Tween(self.ColorBar, {BackgroundTransparency = 1}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    ModernUI:Tween(self.Title, {TextTransparency = 1}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    ModernUI:Tween(self.Message, {TextTransparency = 1}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    ModernUI:Tween(self.Icon, {ImageTransparency = 1}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    ModernUI:Tween(self.CloseButton, {TextTransparency = 1}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    ModernUI:Tween(self.Stroke, {Transparency = 1}, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out))
+    
+    -- Remove from active notifications
+    for i, v in ipairs(ActiveNotifications) do
+        if v == self then
+            table.remove(ActiveNotifications, i)
+            break
+        end
+    end
+    
+    -- Call registered callbacks
+    for _, callback in ipairs(self.Callbacks.Closed) do
+        task.spawn(function()
+            callback()
+        end)
+    end
+    
+    -- Destroy after animation
+    task.delay(0.3, function()
+        self.Instance:Destroy()
+    end)
+end
+
+-- Register a callback for when the notification is closed
+function Notification:OnClosed(callback)
+    table.insert(self.Callbacks.Closed, callback)
+    return self
+end
+
+-- Set custom icon
+function Notification:SetIcon(iconId)
+    self.Icon.Image = iconId
+    return self
+end
+
+-- Set custom color
+function Notification:SetColor(color)
+    self.ColorBar.BackgroundColor3 = color
+    self.ProgressBar.BackgroundColor3 = color
+    self.Stroke.Color = color
+    return self
+end
+
+-- Update notification title
+function Notification:SetTitle(title)
+    self.Title.Text = title
+    return self
+end
+
+-- Update notification message
+function Notification:SetMessage(message)
+    self.Message.Text = message
+    return self
+end
+
+-- Helper function to create different types of notifications
+function Notification.info(title, message, duration, parent)
+    return Notification.new(title, message, "INFO", duration, parent)
+end
+
+function Notification.success(title, message, duration, parent)
+    return Notification.new(title, message, "SUCCESS", duration, parent)
+end
+
+function Notification.warning(title, message, duration, parent)
+    return Notification.new(title, message, "WARNING", duration, parent)
+end
+
+function Notification.error(title, message, duration, parent)
+    return Notification.new(title, message, "ERROR", duration, parent)
+end
+
+function Notification.custom(title, message, color, icon, duration, parent)
+    local notification = Notification.new(title, message, "CUSTOM", duration, parent)
+    if color then notification:SetColor(color) end
+    if icon then notification:SetIcon(icon) end
+    return notification
+end
+
+-- Clear all active notifications
+function Notification.clearAll()
+    for _, notification in ipairs(ActiveNotifications) do
+        notification:Close()
+    end
+end
+
+-- Return the module
+return Notification 

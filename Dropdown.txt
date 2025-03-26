@@ -1,0 +1,494 @@
+-- Dropdown Component for ModernUI
+-- This file contains the implementation of customizable dropdowns with animations
+
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local Dropdown = {}
+Dropdown.__index = Dropdown
+
+-- Create a new dropdown
+function Dropdown.new(parent, placeholder, options, size, position)
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Default properties
+    local dropdownSize = size or UDim2.new(0, 200, 0, 40)
+    local dropdownPosition = position or UDim2.new(0.5, 0, 0, 0)
+    local placeholderText = placeholder or "Select an option"
+    
+    -- Create the dropdown container
+    local dropdownFrame = Instance.new("Frame")
+    dropdownFrame.Name = "DropdownFrame_" .. placeholder:gsub("%s+", "_")
+    dropdownFrame.Size = dropdownSize
+    dropdownFrame.Position = dropdownPosition
+    dropdownFrame.AnchorPoint = Vector2.new(0.5, 0)
+    dropdownFrame.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    dropdownFrame.ClipsDescendants = true
+    dropdownFrame.Parent = parent
+    
+    -- Add corner to dropdown
+    local corner = ModernUI:CreateCorner(dropdownFrame)
+    
+    -- Add stroke (border)
+    local stroke = ModernUI:CreateStroke(dropdownFrame, ModernUI.Config.Theme.Accent, 1.5, 0.5)
+    
+    -- Create selected label
+    local selectedLabel = Instance.new("TextLabel")
+    selectedLabel.Name = "SelectedLabel"
+    selectedLabel.Size = UDim2.new(1, -50, 1, 0)
+    selectedLabel.Position = UDim2.new(0, 10, 0, 0)
+    selectedLabel.BackgroundTransparency = 1
+    selectedLabel.Text = placeholderText
+    selectedLabel.TextColor3 = ModernUI.Config.Theme.TextDark
+    selectedLabel.Font = ModernUI.Config.Font
+    selectedLabel.TextSize = 16
+    selectedLabel.TextXAlignment = Enum.TextXAlignment.Left
+    selectedLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    selectedLabel.Parent = dropdownFrame
+    
+    -- Create arrow icon
+    local arrowIcon = Instance.new("ImageLabel")
+    arrowIcon.Name = "ArrowIcon"
+    arrowIcon.Size = UDim2.new(0, 20, 0, 20)
+    arrowIcon.Position = UDim2.new(1, -30, 0.5, 0)
+    arrowIcon.AnchorPoint = Vector2.new(0, 0.5)
+    arrowIcon.BackgroundTransparency = 1
+    arrowIcon.Image = "rbxassetid://7072706620" -- Down arrow icon
+    arrowIcon.ImageColor3 = ModernUI.Config.Theme.TextDark
+    arrowIcon.Parent = dropdownFrame
+    
+    -- Create dropdown button
+    local dropdownButton = Instance.new("TextButton")
+    dropdownButton.Name = "DropdownButton"
+    dropdownButton.Size = UDim2.new(1, 0, 1, 0)
+    dropdownButton.BackgroundTransparency = 1
+    dropdownButton.Text = ""
+    dropdownButton.AutoButtonColor = false
+    dropdownButton.Parent = dropdownFrame
+    
+    -- Create dropdown list container
+    local listContainer = Instance.new("Frame")
+    listContainer.Name = "ListContainer"
+    listContainer.Size = UDim2.new(1, 0, 0, 0) -- Will be sized based on options
+    listContainer.Position = UDim2.new(0, 0, 1, 0)
+    listContainer.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    listContainer.BorderSizePixel = 0
+    listContainer.Visible = false
+    listContainer.ZIndex = 5
+    listContainer.Parent = dropdownFrame
+    
+    -- Create scroll frame for options
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Name = "OptionsScroll"
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 4
+    scrollFrame.ScrollBarImageColor3 = ModernUI.Config.Theme.Accent
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Will be updated as options are added
+    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scrollFrame.ZIndex = 5
+    scrollFrame.Parent = listContainer
+    
+    -- Add padding to scroll frame
+    local scrollPadding = Instance.new("UIPadding")
+    scrollPadding.PaddingTop = UDim.new(0, 5)
+    scrollPadding.PaddingBottom = UDim.new(0, 5)
+    scrollPadding.Parent = scrollFrame
+    
+    -- Auto layout for options
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 2)
+    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Parent = scrollFrame
+    
+    -- Dropdown object with properties and methods
+    local dropdown = {
+        Instance = dropdownFrame,
+        Button = dropdownButton,
+        SelectedLabel = selectedLabel,
+        ArrowIcon = arrowIcon,
+        ListContainer = listContainer,
+        ScrollFrame = scrollFrame,
+        Corner = corner,
+        Stroke = stroke,
+        Options = {},
+        OptionButtons = {},
+        SelectedOption = nil,
+        IsOpen = false,
+        MaxVisibleItems = 5,
+        OptionHeight = 30,
+        Enabled = true,
+        Callbacks = {}
+    }
+    setmetatable(dropdown, Dropdown)
+    
+    -- Add options if provided
+    if options then
+        for _, option in ipairs(options) do
+            dropdown:AddOption(option)
+        end
+    end
+    
+    -- Set up button click event
+    dropdownButton.MouseButton1Click:Connect(function()
+        if dropdown.Enabled then
+            dropdown:Toggle()
+        end
+    end)
+    
+    -- Set up hover effects
+    dropdownButton.MouseEnter:Connect(function()
+        if dropdown.Enabled then
+            ModernUI:Tween(dropdownFrame, {
+                BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.1)
+            }, ModernUI.Config.Animation.HoverTweenInfo)
+            
+            ModernUI:Tween(stroke, {
+                Transparency = 0
+            }, ModernUI.Config.Animation.HoverTweenInfo)
+        end
+    end)
+    
+    dropdownButton.MouseLeave:Connect(function()
+        if dropdown.Enabled and not dropdown.IsOpen then
+            ModernUI:Tween(dropdownFrame, {
+                BackgroundColor3 = ModernUI.Config.Theme.Secondary
+            }, ModernUI.Config.Animation.HoverTweenInfo)
+            
+            ModernUI:Tween(stroke, {
+                Transparency = 0.5
+            }, ModernUI.Config.Animation.HoverTweenInfo)
+        end
+    end)
+    
+    -- Close dropdown when clicking elsewhere
+    UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local position = input.Position
+            local absolutePosition = dropdownFrame.AbsolutePosition
+            local absoluteSize = dropdownFrame.AbsoluteSize
+            
+            -- Check if click is outside the dropdown (including the expanded list)
+            if dropdown.IsOpen then
+                local listSize = dropdown.ListContainer.AbsoluteSize
+                local isInDropdown = 
+                    position.X >= absolutePosition.X and 
+                    position.X <= absolutePosition.X + absoluteSize.X and 
+                    position.Y >= absolutePosition.Y and 
+                    position.Y <= absolutePosition.Y + absoluteSize.Y + listSize.Y
+                
+                if not isInDropdown then
+                    dropdown:Close()
+                end
+            end
+        end
+    end)
+    
+    return dropdown
+end
+
+-- Add an option to the dropdown
+function Dropdown:AddOption(option)
+    if type(option) ~= "table" then
+        option = {Text = tostring(option), Value = option}
+    end
+    
+    table.insert(self.Options, option)
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    -- Create option button
+    local optionButton = Instance.new("TextButton")
+    optionButton.Name = "Option_" .. option.Text:gsub("%s+", "_")
+    optionButton.Size = UDim2.new(0.95, 0, 0, self.OptionHeight)
+    optionButton.BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    optionButton.BackgroundTransparency = 1
+    optionButton.Text = option.Text
+    optionButton.TextColor3 = ModernUI.Config.Theme.Text
+    optionButton.Font = ModernUI.Config.Font
+    optionButton.TextSize = 14
+    optionButton.ZIndex = 6
+    optionButton.Parent = self.ScrollFrame
+    
+    -- Add corner to option button
+    local optionCorner = ModernUI:CreateCorner(optionButton, UDim.new(0, 4))
+    
+    -- Set up option button events
+    optionButton.MouseButton1Click:Connect(function()
+        self:SelectOption(option)
+        self:Close()
+    end)
+    
+    optionButton.MouseEnter:Connect(function()
+        ModernUI:Tween(optionButton, {
+            BackgroundTransparency = 0,
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.2)
+        }, ModernUI.Config.Animation.HoverTweenInfo)
+    end)
+    
+    optionButton.MouseLeave:Connect(function()
+        ModernUI:Tween(optionButton, {
+            BackgroundTransparency = 1
+        }, ModernUI.Config.Animation.HoverTweenInfo)
+    end)
+    
+    table.insert(self.OptionButtons, optionButton)
+    
+    -- Update list container height based on number of options
+    self:UpdateListHeight()
+    
+    return self
+end
+
+-- Update list container height
+function Dropdown:UpdateListHeight()
+    local numOptions = #self.Options
+    local maxItems = math.min(self.MaxVisibleItems, numOptions)
+    local listHeight = maxItems * (self.OptionHeight + 2) + 10 -- Adding padding
+    
+    self.ListContainer.Size = UDim2.new(1, 0, 0, listHeight)
+    self.ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, numOptions * (self.OptionHeight + 2) + 10)
+end
+
+-- Select an option
+function Dropdown:SelectOption(option)
+    self.SelectedOption = option
+    
+    -- Update selected label
+    self.SelectedLabel.Text = option.Text
+    self.SelectedLabel.TextColor3 = require(script.Parent.ModernUI).Config.Theme.Text
+    
+    -- Call callbacks
+    for _, callback in ipairs(self.Callbacks) do
+        task.spawn(function()
+            callback(option.Value, option.Text)
+        end)
+    end
+    
+    return self
+end
+
+-- Toggle the dropdown
+function Dropdown:Toggle()
+    if self.IsOpen then
+        self:Close()
+    else
+        self:Open()
+    end
+    
+    return self
+end
+
+-- Open the dropdown
+function Dropdown:Open()
+    if not self.Enabled or self.IsOpen then return self end
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    self.IsOpen = true
+    
+    -- Show list container
+    self.ListContainer.Visible = true
+    self.ListContainer.Size = UDim2.new(1, 0, 0, 0)
+    
+    -- Rotate arrow icon
+    ModernUI:Tween(self.ArrowIcon, {
+        Rotation = 180
+    }, ModernUI.Config.Animation.TweenInfo)
+    
+    -- Expand list container
+    local height = math.min(#self.Options, self.MaxVisibleItems) * (self.OptionHeight + 2) + 10
+    ModernUI:Tween(self.ListContainer, {
+        Size = UDim2.new(1, 0, 0, height)
+    }, ModernUI.Config.Animation.TweenInfo)
+    
+    -- Highlight dropdown
+    ModernUI:Tween(self.Instance, {
+        BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(ModernUI.Config.Theme.Accent, 0.15)
+    }, ModernUI.Config.Animation.TweenInfo)
+    
+    ModernUI:Tween(self.Stroke, {
+        Color = ModernUI.Config.Theme.Accent,
+        Transparency = 0
+    }, ModernUI.Config.Animation.TweenInfo)
+    
+    return self
+end
+
+-- Close the dropdown
+function Dropdown:Close()
+    if not self.IsOpen then return self end
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    self.IsOpen = false
+    
+    -- Rotate arrow icon back
+    ModernUI:Tween(self.ArrowIcon, {
+        Rotation = 0
+    }, ModernUI.Config.Animation.TweenInfo)
+    
+    -- Collapse list container
+    ModernUI:Tween(self.ListContainer, {
+        Size = UDim2.new(1, 0, 0, 0)
+    }, ModernUI.Config.Animation.TweenInfo, function()
+        self.ListContainer.Visible = false
+    end)
+    
+    -- Reset dropdown appearance if not hovering
+    ModernUI:Tween(self.Instance, {
+        BackgroundColor3 = ModernUI.Config.Theme.Secondary
+    }, ModernUI.Config.Animation.TweenInfo)
+    
+    ModernUI:Tween(self.Stroke, {
+        Color = ModernUI.Config.Theme.Accent,
+        Transparency = 0.5
+    }, ModernUI.Config.Animation.TweenInfo)
+    
+    return self
+end
+
+-- Clear all options
+function Dropdown:ClearOptions()
+    -- Remove all option buttons
+    for _, button in ipairs(self.OptionButtons) do
+        button:Destroy()
+    end
+    
+    -- Clear options
+    self.Options = {}
+    self.OptionButtons = {}
+    
+    -- Reset selected option
+    self.SelectedOption = nil
+    self.SelectedLabel.Text = self.SelectedLabel.Text
+    self.SelectedLabel.TextColor3 = require(script.Parent.ModernUI).Config.Theme.TextDark
+    
+    -- Update list height
+    self:UpdateListHeight()
+    
+    return self
+end
+
+-- Set options
+function Dropdown:SetOptions(options)
+    self:ClearOptions()
+    
+    for _, option in ipairs(options) do
+        self:AddOption(option)
+    end
+    
+    return self
+end
+
+-- Set the maximum number of visible items
+function Dropdown:SetMaxVisibleItems(maxItems)
+    self.MaxVisibleItems = maxItems
+    self:UpdateListHeight()
+    return self
+end
+
+-- Register a callback function for when an option is selected
+function Dropdown:OnChanged(callback)
+    table.insert(self.Callbacks, callback)
+    return self
+end
+
+-- Set the selected option by value
+function Dropdown:SetValue(value)
+    for _, option in ipairs(self.Options) do
+        if option.Value == value then
+            self:SelectOption(option)
+            break
+        end
+    end
+    
+    return self
+end
+
+-- Set the enabled state of the dropdown
+function Dropdown:SetEnabled(enabled)
+    self.Enabled = enabled
+    
+    local ModernUI = require(script.Parent.ModernUI)
+    
+    if enabled then
+        ModernUI:Tween(self.Instance, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary
+        })
+        ModernUI:Tween(self.SelectedLabel, {
+            TextColor3 = self.SelectedOption and ModernUI.Config.Theme.Text or ModernUI.Config.Theme.TextDark
+        })
+        ModernUI:Tween(self.ArrowIcon, {
+            ImageColor3 = ModernUI.Config.Theme.TextDark
+        })
+    else
+        ModernUI:Tween(self.Instance, {
+            BackgroundColor3 = ModernUI.Config.Theme.Secondary:Lerp(Color3.new(0, 0, 0), 0.5)
+        })
+        ModernUI:Tween(self.SelectedLabel, {
+            TextColor3 = ModernUI.Config.Theme.TextDark:Lerp(Color3.new(0, 0, 0), 0.5)
+        })
+        ModernUI:Tween(self.ArrowIcon, {
+            ImageColor3 = ModernUI.Config.Theme.TextDark:Lerp(Color3.new(0, 0, 0), 0.5)
+        })
+        
+        -- Close dropdown if open
+        if self.IsOpen then
+            self:Close()
+        end
+    end
+    
+    return self
+end
+
+-- Set custom colors
+function Dropdown:SetColors(backgroundColor, textColor, placeholderColor, accentColor)
+    if backgroundColor then
+        self.Instance.BackgroundColor3 = backgroundColor
+    end
+    
+    if textColor and self.SelectedOption then
+        self.SelectedLabel.TextColor3 = textColor
+    end
+    
+    if placeholderColor and not self.SelectedOption then
+        self.SelectedLabel.TextColor3 = placeholderColor
+    end
+    
+    if accentColor then
+        self.Stroke.Color = accentColor
+    end
+    
+    return self
+end
+
+-- Set the placeholder text
+function Dropdown:SetPlaceholder(placeholder)
+    if not self.SelectedOption then
+        self.SelectedLabel.Text = placeholder
+    end
+    
+    return self
+end
+
+-- Set the size of the dropdown
+function Dropdown:SetSize(size)
+    self.Instance.Size = size
+    return self
+end
+
+-- Set the position of the dropdown
+function Dropdown:SetPosition(position)
+    self.Instance.Position = position
+    return self
+end
+
+-- Set the anchor point of the dropdown
+function Dropdown:SetAnchorPoint(anchorPoint)
+    self.Instance.AnchorPoint = anchorPoint
+    return self
+end
+
+-- Return the module
+return Dropdown 
